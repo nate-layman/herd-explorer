@@ -7,10 +7,18 @@
   <meta name="description" content="How HERD Explorer projects research and development spending: a hierarchical growth model, its simulation, and how it was tested." />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/site.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.getElementById('symbols'), { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '\\(', right: '\\)', display: false }] })"></script>
   <style>
     main { max-width: 900px; }
     main p, main li { max-width: 52rem; }
     pre { background: var(--panel); padding: 0.8rem 1rem; border-radius: 0.4rem; overflow-x: auto; font-size: 0.85rem; }
+    #symbols .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2rem 0; }
+    #symbols dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; }
+    #symbols dt { font-weight: 600; }
+    #symbols dd { margin: 0; }
     .callout { background: #fff8e6; border-left: 3px solid #eda100; padding: 0.6rem 0.9rem; }
   </style>
 </head>
@@ -60,7 +68,75 @@
         double or halve, than for large ones. The size of that noise is estimated as a smooth function of institution size.</li>
     </ul>
 
+    <section id="symbols">
+    <h2>The model in symbols</h2>
+    <p>Let \(V_{it}\) be institution \(i\)'s spending on a measure in fiscal year \(t\), in thousands of nominal dollars,
+      \(y_{it} = \log V_{it}\), and \(g_{it} = y_{it} - y_{i,t-1}\) its growth from one year to the next (computed only
+      across consecutive reported years). Institution \(i\) has type \(s[i]\) (2021 Carnegie) and state \(k[i]\).</p>
+
+    <h3>Model</h3>
+    <p>Written in the usual hierarchical notation, outcome first, then each level:</p>
+    $$\begin{aligned}
+      g_{it} &\sim \mathcal{N}\!\left(\eta_{it},\ \sigma(y_{i,t-1})\right) \\
+      \eta_{it} &= \mu_{s[i]} + a_{k[i]} + u_i + \gamma_t + \delta_{t,s[i]} \\
+      a_k &\sim \mathcal{N}(0, \sigma_a) && \text{state} \\
+      u_i &\sim \mathcal{N}(0, \sigma_u) && \text{institution} \\
+      \gamma_t &\sim \mathcal{N}(0, \sigma_\gamma) && \text{year shock} \\
+      \delta_{t,s} &\sim \mathcal{N}(0, \sigma_\delta) && \text{year-by-type shock} \\
+      \log \sigma(y) &= f(y) && \text{noise by size}
+    \end{aligned}$$
+    <p>Normal distributions are written with their standard deviation.</p>
+    <dl>
+      <dt>\(\mu_s\)</dt><dd>typical growth for institution type \(s\) (fixed effect)</dd>
+      <dt>\(a_k\)</dt><dd>state effect</dd>
+      <dt>\(u_i\)</dt><dd>institution effect: its own persistent growth relative to its type and state</dd>
+      <dt>\(\gamma_t\)</dt><dd>shock shared by every institution in year \(t\)</dd>
+      <dt>\(\delta_{t,s}\)</dt><dd>shock shared by institutions of type \(s\) in year \(t\)</dd>
+      <dt>\(f\)</dt><dd>smooth function of last year's log size (thin-plate spline, 6 basis functions)</dd>
+    </dl>
+
+    <h3>Estimation</h3>
+    <p>The model is fit with mgcv by restricted maximum likelihood (REML), which estimates the standard deviations
+      \(\sigma_a, \sigma_u, \sigma_\gamma, \sigma_\delta\) together with the coefficients
+      \(\beta = (\mu, a, u, \gamma, \delta)\). The coefficients' uncertainty is approximately normal,
+      \(\beta \sim \mathcal{N}(\hat\beta, V_\beta)\), where \(V_\beta\) is mgcv's unconditional covariance, which also accounts
+      for uncertainty in the estimated standard deviations. Projections draw from this distribution.</p>
+    <p>The noise function is fit in a second step on the residuals \(\hat\varepsilon_{it}\). For normal errors
+      \(\mathbb{E}\left[\log|\varepsilon|\right] = \log\sigma - \tfrac{1}{2}(\gamma_E + \log 2) \approx \log\sigma - 0.635\), so</p>
+    $$\log\left|\hat\varepsilon_{it}\right| = f(y_{i,t-1}) - 0.635 + \nu_{it}, \qquad \hat\sigma(y) = \exp\!\left(\hat f(y)\right)$$
+
+    <h3>Projection</h3>
+    <p>From the last observed year \(T = 2024\), for draws \(m = 1, \dots, 200\) and horizons \(h = 1, \dots, 5\), with the
+      widening factor \(c = 1.3\) chosen by backtest:</p>
+    $$\begin{aligned}
+      \beta^{(m)} &\sim \mathcal{N}\!\left(\hat\beta,\ V_\beta\right) \\
+      \gamma^{(m)}_{T+j} &\sim \mathcal{N}\!\left(0,\ c\,\hat\sigma_\gamma\right) \\
+      \delta^{(m)}_{T+j,s} &\sim \mathcal{N}\!\left(0,\ c\,\hat\sigma_\delta\right) \\
+      \varepsilon^{(m)}_{i,T+j} &\sim \mathcal{N}\!\left(0,\ c\,\hat\sigma(y_{iT})\right) \\[4pt]
+      y^{(m)}_{i,T+h} &= y_{iT} + \sum_{j=1}^{h}\left(\mu^{(m)}_{s[i]} + a^{(m)}_{k[i]} + u^{(m)}_i
+        + \gamma^{(m)}_{T+j} + \delta^{(m)}_{T+j,s[i]} + \varepsilon^{(m)}_{i,T+j}\right) \\
+      V^{(m)}_{i,T+h} &= \exp\!\left(y^{(m)}_{i,T+h}\right)
+    \end{aligned}$$
+    <p>A group \(G\) (a type, a state, the nation, a set of institutions) is projected by summing within each draw, with
+      institutions the model did not project held at their last value:</p>
+    $$V^{(m)}_{G,T+h} = \sum_{i \in G,\ \text{modeled}} V^{(m)}_{i,T+h} + \sum_{i \in G,\ \text{not modeled}} V_{iT}$$
+    <p>The shaded ranges are the 10th to 90th and 5th to 95th percentiles of \(V^{(m)}_{G,T+h}\) across draws. Because every
+      institution in a draw shares the same \(\gamma^{(m)}\), \(\delta^{(m)}\) and \(\beta^{(m)}\), a group's range carries the
+      uncertainty its members share.</p>
+
+    <h3>Scoring</h3>
+    <p>Each backtest projection is scored with the continuous ranked probability score on the log scale, estimated from the
+      draws:</p>
+    $$\mathrm{CRPS}(F, y) = \mathbb{E}_F\left|X - y\right| - \tfrac{1}{2}\,\mathbb{E}_F\left|X - X'\right|$$
+    <p>where \(X\) and \(X'\) are independent draws from the projection \(F\) and \(y\) is what actually happened. Lower is
+      better. It equals the absolute error when the projection is a single number, and rewards ranges that are both narrow
+      and right.</p>
+    </section>
+
     <h2>The model as code</h2>
+    <p>The symbols above map to the R code below: \(\mu_s\) is <code>sector</code>, \(a_k\) is <code>s(state, bs = "re")</code>,
+      \(u_i\) is <code>s(inst, bs = "re")</code>, \(\gamma_t\) is <code>s(year, bs = "re")</code>, \(\delta_{t,s}\) is
+      <code>s(year_x_sector, bs = "re")</code>, and \(f\) is the second-step <code>gam</code>.</p>
     <p>Fit with the R package <a href="https://cran.r-project.org/package=mgcv">mgcv</a>, one model per measure:</p>
     <pre>growth = log(value[t]) - log(value[t - 1])
 

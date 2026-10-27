@@ -4,60 +4,187 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HERD Explorer: Explore</title>
-  <meta name="description" content="Drag-and-drop charts on NCSES HERD Survey data, one row per institution and year." />
+  <meta name="description" content="Pivot, filter and chart NCSES HERD Survey data by institution, year, measure and group, with export." />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/site.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@perspective-dev/viewer@5.5.1/dist/css/pro.css" />
   <style>
     main { max-width: none; }
+    .tabs { display: flex; gap: 0.2rem; border-bottom: 1px solid var(--line); margin-bottom: 0.8rem; }
+    .tabs button { font: inherit; font-weight: 600; padding: 0.5rem 1rem; border: none; background: none; color: var(--muted);
+                   border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+    .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+    .panel[hidden] { display: none; }
+    .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.6rem; font-size: 0.85rem; color: var(--muted); }
+    .presets button { font: inherit; font-size: 0.85rem; padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+    .presets button:hover { border-color: var(--accent); }
+    .presets button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    perspective-viewer {
+      height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; overflow: hidden;
+      /* Match the rest of the site instead of Perspective's monospace Pro theme */
+      font-family: var(--font);
+      --psp-interface-monospace--font-family: var(--font);
+      --psp-active--color: #2a78d6;
+      --psp-inactive--border-color: #e3e3e3;
+      --psp-placeholder--background: #f7f7f5;
+      --psp-button--font-size: 14px;
+      --psp-column-selector--font-size: 14px;
+      --psp-charts--series-1--color: #2a78d6; --psp-charts--series-2--color: #eb6834;
+      --psp-charts--series-3--color: #1baf7a; --psp-charts--series-4--color: #eda100;
+      --psp-charts--series-5--color: #e87ba4; --psp-charts--series-6--color: #008300;
+      --psp-charts--series-7--color: #6250d6; --psp-charts--series-8--color: #e34948;
+      --psp-charts--gridline--color: #ececec;
+    }
     #gw { min-height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; }
   </style>
 </head>
 <body>
   <main>
     <h1>Explore</h1>
-    <p class="lede">Build any chart by dragging fields. Each row is one institution in one fiscal year; every measure is a
-      column, in thousands of dollars (personnel in people). Try <em>year</em> on the x-axis, a measure on the y-axis,
-      and <em>sector</em> or <em>state</em> on color.</p>
-    <div id="gw"><p class="status" style="padding:1rem">Loading the database and the chart builder&hellip;</p></div>
-    <p class="chart-note">Source: NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars. Institution type
-      (sector) from the 2021 Carnegie Classification. Measures marked "standard form" cover institutions with $1 million or
-      more in R&amp;D; see <a href="data.html">Data &amp; sources</a> for every definition.
-      Chart builder: <a href="https://github.com/Kanaries/graphic-walker">Graphic Walker</a> (Apache 2.0).</p>
+    <p class="lede">Every measure for every institution and year. Use <strong>Table</strong> to pivot, filter and export, or
+      <strong>Chart builder</strong> to drag fields into a chart.</p>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-table" aria-controls="panel-table" aria-selected="true">Table</button>
+      <button role="tab" id="tab-chart" aria-controls="panel-chart" aria-selected="false">Chart builder</button>
+    </div>
+
+    <section id="panel-table" class="panel" role="tabpanel" aria-labelledby="tab-table">
+      <div class="presets" id="presets">
+        <span>Quick views:</span>
+        <button data-view="sector" aria-pressed="true">Total R&amp;D by institution type</button>
+        <button data-view="state">By state</button>
+        <button data-view="institutions">Top institutions</button>
+        <button data-view="agency">Federal R&amp;D by agency</button>
+        <button data-view="field">By field of research</button>
+        <button data-view="chart">Chart: funding sources over time</button>
+        <button data-view="raw">Raw data</button>
+      </div>
+      <perspective-viewer id="viewer"></perspective-viewer>
+      <p id="table-status" class="status">Loading the database and the table&hellip;</p>
+      <p class="chart-note">Amounts are in dollars (personnel in people or full-time equivalents). Click the settings button
+        at the top right of the table to group by any field, split columns, filter, switch to a chart, or export the current
+        view as CSV. Table: <a href="https://github.com/perspective-dev/perspective">Perspective</a> (Apache 2.0).</p>
+    </section>
+
+    <section id="panel-chart" class="panel" role="tabpanel" aria-labelledby="tab-chart" hidden>
+      <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
+        column, in thousands of dollars (personnel in people). Try <em>year</em> on the x-axis, a measure on the y-axis, and
+        <em>sector</em> or <em>state</em> on color.</p>
+      <div id="gw"><p class="status" style="padding:1rem">Loading the chart builder&hellip;</p></div>
+      <p class="chart-note">Chart builder: <a href="https://github.com/Kanaries/graphic-walker">Graphic Walker</a> (Apache 2.0).</p>
+    </section>
+
+    <p class="chart-note">Source: NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars. Institution type (sector)
+      from the 2021 Carnegie Classification. Measures marked "standard form" cover institutions with $1 million or more in
+      R&amp;D; see <a href="data.html">Data &amp; sources</a> for every definition.</p>
   </main>
 
   <script type="module">
     import { renderLayout } from './js/layout.js';
-    import { query } from './js/db.js';
-    import React from 'https://esm.sh/react@19.1.0';
-    import { createRoot } from 'https://esm.sh/react-dom@19.1.0/client';
-    import { GraphicWalker } from 'https://esm.sh/@kanaries/graphic-walker@0.5.3?deps=react@19.1.0,react-dom@19.1.0';
+    import { query, columns } from './js/db.js';
 
     renderLayout('explore.html');
+    const $ = id => document.getElementById(id);
 
-    const catalog = await query('SELECT id, label, category, unit, coverage FROM measure_catalog ORDER BY category, label');
-    // Column names people will read in the field list
-    const colName = m => `${m.category}: ${m.label}`;
-    const pivotCols = catalog.map(m =>
-      `sum(value) FILTER (WHERE measure_id = '${m.id}') AS "${colName(m).replaceAll('"', '""')}"`).join(',\n');
+    // ── Table (Perspective) ─────────────────────────────────────────────────
+    async function loadTable() {
+      await Promise.all([
+        import('https://cdn.jsdelivr.net/npm/@perspective-dev/viewer@5.5.1/dist/cdn/perspective-viewer.js'),
+        import('https://cdn.jsdelivr.net/npm/@perspective-dev/viewer-datagrid@5.5.1/dist/cdn/perspective-viewer-datagrid.js'),
+        import('https://cdn.jsdelivr.net/npm/@perspective-dev/viewer-charts@5.5.1/dist/cdn/perspective-viewer-charts.js'),
+      ]);
+      const { default: perspective } = await import('https://cdn.jsdelivr.net/npm/@perspective-dev/client@5.5.1/dist/cdn/perspective.js');
+      const data = await columns(`
+        SELECT i.name AS institution, i.state, i.sector, i.control AS "public or private",
+               CASE WHEN i.msi THEN 'Yes' ELSE 'No' END AS "minority-serving",
+               CASE WHEN i.medical_school THEN 'Yes' ELSE 'No' END AS "medical school",
+               CAST(m.year AS VARCHAR) AS year, c.category, c.label AS measure,
+               CASE c.unit WHEN 'thousands_usd' THEN 'dollars' ELSE c.unit END AS unit,
+               round(m.value * CASE WHEN c.unit = 'thousands_usd' THEN 1000 ELSE 1 END) AS amount
+        FROM metrics m
+        JOIN measure_catalog c ON c.id = m.measure_id
+        JOIN institution_latest i USING (inst_id)`);
+      const worker = await perspective.worker();
+      // Declare types so years stay labels. Amounts must be float: Perspective integers are 32-bit and
+      // overflow above $2.1 billion, which the largest institutions exceed.
+      const schema = Object.fromEntries(Object.keys(data).map(k => [k, k === 'amount' ? 'float' : 'string']));
+      const table = await worker.table(schema);
+      await table.update(data);
+      const viewer = $('viewer');
+      await viewer.load(table);
 
-    const rows = await query(`
-      SELECT m.year, i.name AS institution, i.state, i.sector, i.control AS "public or private",
-             i.highest_degree AS "highest degree", i.msi AS "minority-serving", i.hbcu, i.medical_school AS "medical school",
-             i.land_grant AS "land-grant", ${pivotCols}
-      FROM metrics m JOIN institution_latest i USING (inst_id)
-      GROUP BY ALL ORDER BY institution, year`);
+      // One-click views so most people never need the settings panel
+      const fmt0 = { amount: { number_format: { maximumFractionDigits: 0 } } };
+      const base = { plugin: 'Datagrid', columns: ['amount'], aggregates: { amount: 'sum' }, columns_config: fmt0,
+                     split_by: ['year'], sort: [['amount', 'desc']], settings: false };
+      const VIEWS = {
+        sector: { ...base, group_by: ['sector'], filter: [['measure', '==', 'All R&D']] },
+        state: { ...base, group_by: ['state'], filter: [['measure', '==', 'All R&D']] },
+        institutions: { ...base, group_by: ['institution'], filter: [['measure', '==', 'All R&D']] },
+        agency: { ...base, group_by: ['measure'], filter: [['category', '==', 'Federal agency']] },
+        field: { ...base, group_by: ['measure'], filter: [['category', '==', 'Field of research']] },
+        chart: { plugin: 'Y Line', columns: ['amount'], aggregates: { amount: 'sum' }, group_by: ['year'],
+                 split_by: ['measure'], filter: [['category', '==', 'Source of funds'], ['measure', '!=', 'All R&D']],
+                 sort: [], settings: false },
+        // Every row as it is stored: one institution, year and measure
+        raw: { plugin: 'Datagrid', group_by: [], split_by: [], filter: [], columns_config: fmt0,
+               columns: ['institution', 'state', 'sector', 'year', 'category', 'measure', 'unit', 'amount'],
+               sort: [['institution', 'asc'], ['year', 'asc']], settings: false },
+      };
+      const presets = $('presets');
+      async function show(name) {
+        await viewer.restore(VIEWS[name]);
+        presets.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
+      }
+      presets.addEventListener('click', e => { if (e.target.dataset.view) show(e.target.dataset.view); });
+      await show('sector');
+      $('table-status').remove();
+    }
 
-    const dims = ['year', 'institution', 'state', 'sector', 'public or private', 'highest degree', 'minority-serving', 'hbcu', 'medical school', 'land-grant'];
-    const fields = [
-      ...dims.map(d => ({ fid: d, name: d, semanticType: d === 'year' ? 'ordinal' : 'nominal', analyticType: 'dimension' })),
-      ...catalog.map(m => ({ fid: colName(m), name: colName(m), semanticType: 'quantitative', analyticType: 'measure' })),
-    ];
-    // Booleans read better as words in a chart builder
-    for (const r of rows) for (const d of ['minority-serving', 'hbcu', 'medical school', 'land-grant']) r[d] = r[d] ? 'Yes' : 'No';
+    // ── Chart builder (Graphic Walker) ──────────────────────────────────────
+    async function loadChart() {
+      const [{ default: React }, { createRoot }, { GraphicWalker }] = await Promise.all([
+        import('https://esm.sh/react@19.1.0'),
+        import('https://esm.sh/react-dom@19.1.0/client'),
+        import('https://esm.sh/@kanaries/graphic-walker@0.5.3?deps=react@19.1.0,react-dom@19.1.0'),
+      ]);
+      const catalog = await query('SELECT id, label, category FROM measure_catalog ORDER BY category, label');
+      // Column names people will read in the field list
+      const colName = m => `${m.category}: ${m.label}`;
+      const pivotCols = catalog.map(m =>
+        `sum(value) FILTER (WHERE measure_id = '${m.id}') AS "${colName(m).replaceAll('"', '""')}"`).join(',\n');
+      const rows = await query(`
+        SELECT m.year, i.name AS institution, i.state, i.sector, i.control AS "public or private",
+               i.highest_degree AS "highest degree", i.msi AS "minority-serving", i.hbcu, i.medical_school AS "medical school",
+               i.land_grant AS "land-grant", ${pivotCols}
+        FROM metrics m JOIN institution_latest i USING (inst_id)
+        GROUP BY ALL ORDER BY institution, year`);
+      const dims = ['year', 'institution', 'state', 'sector', 'public or private', 'highest degree', 'minority-serving', 'hbcu', 'medical school', 'land-grant'];
+      const fields = [
+        ...dims.map(d => ({ fid: d, name: d, semanticType: d === 'year' ? 'ordinal' : 'nominal', analyticType: 'dimension' })),
+        ...catalog.map(m => ({ fid: colName(m), name: colName(m), semanticType: 'quantitative', analyticType: 'measure' })),
+      ];
+      // Booleans read better as words in a chart builder
+      for (const r of rows) for (const d of ['minority-serving', 'hbcu', 'medical school', 'land-grant']) r[d] = r[d] ? 'Yes' : 'No';
+      $('gw').innerHTML = '';
+      createRoot($('gw')).render(React.createElement(GraphicWalker, { data: rows, fields, appearance: 'light' }));
+    }
 
-    const el = document.getElementById('gw');
-    el.innerHTML = '';
-    createRoot(el).render(React.createElement(GraphicWalker, { data: rows, fields, appearance: 'light' }));
+    // ── Tabs: each library loads the first time its tab opens ────────────────
+    const loaders = { table: loadTable, chart: loadChart };
+    const loaded = {};
+    function open(name) {
+      for (const n of ['table', 'chart']) {
+        $(`tab-${n}`).setAttribute('aria-selected', String(n === name));
+        $(`panel-${n}`).hidden = n !== name;
+      }
+      history.replaceState(null, '', `#${name}`);
+      loaded[name] ??= loaders[name]();
+    }
+    $('tab-table').onclick = () => open('table');
+    $('tab-chart').onclick = () => open('chart');
+    open(location.hash === '#chart' ? 'chart' : 'table');
   </script>
 </body>
 </html>

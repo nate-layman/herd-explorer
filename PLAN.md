@@ -31,8 +31,7 @@ An interactive site for exploring the NCSES Higher Education Research and Develo
 |---|---|---|
 | Trends | National and group trends with nominal, inflation-adjusted, indexed and share views, linked filters | Mosaic (vgplot) over DuckDB-WASM |
 | Compare | Pick institutions, states or groups and overlay trends, with projections | Plotly |
-| Explore | Drag-and-drop charts on the full table | Graphic Walker |
-| Pivot | Pivot grid and charts for power users, with export | Perspective |
+| Explore | Two tabs: Table (pivot, filter, raw rows, export) and Chart builder (drag-and-drop charts). Merged from separate Explore and Pivot pages on 2026-10-27; pivot.html redirects. | Perspective, Graphic Walker |
 | Ask | Questions about the data in plain language; the model writes SQL that runs locally in DuckDB-WASM | Key passthrough copied from Promptulus |
 | Data & sources | Provenance, survey notes, downloads, methods and backtest results | |
 

@@ -2,107 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HERD Explorer: Pivot</title>
-  <meta name="description" content="Pivot NCSES HERD Survey data by institution, year, measure and group, with export." />
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/site.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@perspective-dev/viewer@5.5.1/dist/css/pro.css" />
-  <style>
-    main { max-width: none; }
-    .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.6rem; font-size: 0.85rem; color: var(--muted); }
-    .presets button { font: inherit; font-size: 0.85rem; padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
-    .presets button:hover { border-color: var(--accent); }
-    .presets button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-    perspective-viewer {
-      height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; overflow: hidden;
-      /* Match the rest of the site instead of Perspective's monospace Pro theme */
-      font-family: var(--font);
-      --psp-interface-monospace--font-family: var(--font);
-      --psp-active--color: #2a78d6;
-      --psp-inactive--border-color: #e3e3e3;
-      --psp-placeholder--background: #f7f7f5;
-      --psp-button--font-size: 14px;
-      --psp-column-selector--font-size: 14px;
-      --psp-charts--series-1--color: #2a78d6; --psp-charts--series-2--color: #eb6834;
-      --psp-charts--series-3--color: #1baf7a; --psp-charts--series-4--color: #eda100;
-      --psp-charts--series-5--color: #e87ba4; --psp-charts--series-6--color: #008300;
-      --psp-charts--series-7--color: #6250d6; --psp-charts--series-8--color: #e34948;
-      --psp-charts--gridline--color: #ececec;
-    }
-  </style>
+  <title>HERD Explorer: Explore</title>
+  <meta http-equiv="refresh" content="0; url=explore.html#table" />
+  <link rel="canonical" href="explore.html#table" />
 </head>
 <body>
-  <main>
-    <h1>Pivot</h1>
-    <p class="lede">A pivot table on every measure for every institution and year. It opens on total R&amp;D by
-      institution type. Click the settings button at the top right of the table to group by any field, split columns by
-      year, filter, switch to a chart, or export the current view as CSV.</p>
-    <div class="presets" id="presets">
-      <span>Quick views:</span>
-      <button data-view="sector" aria-pressed="true">Total R&amp;D by institution type</button>
-      <button data-view="state">By state</button>
-      <button data-view="institutions">Top institutions</button>
-      <button data-view="agency">Federal R&amp;D by agency</button>
-      <button data-view="field">By field of research</button>
-      <button data-view="chart">Chart: funding sources over time</button>
-    </div>
-    <perspective-viewer id="viewer"></perspective-viewer>
-    <p id="status" class="status">Loading the database and the pivot table&hellip;</p>
-    <p class="chart-note">Source: NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars. Amounts are in
-      dollars (personnel in people or full-time equivalents). Institution type (sector) from the 2021 Carnegie Classification. Pivot table:
-      <a href="https://github.com/perspective-dev/perspective">Perspective</a> (Apache 2.0).</p>
-  </main>
-
-  <script type="module">
-    import 'https://cdn.jsdelivr.net/npm/@perspective-dev/viewer@5.5.1/dist/cdn/perspective-viewer.js';
-    import 'https://cdn.jsdelivr.net/npm/@perspective-dev/viewer-datagrid@5.5.1/dist/cdn/perspective-viewer-datagrid.js';
-    import 'https://cdn.jsdelivr.net/npm/@perspective-dev/viewer-charts@5.5.1/dist/cdn/perspective-viewer-charts.js';
-    import perspective from 'https://cdn.jsdelivr.net/npm/@perspective-dev/client@5.5.1/dist/cdn/perspective.js';
-    import { renderLayout } from './js/layout.js';
-    import { columns } from './js/db.js';
-
-    renderLayout('pivot.html');
-
-    const data = await columns(`
-      SELECT c.category, c.label AS measure, CASE c.unit WHEN 'thousands_usd' THEN 'dollars' ELSE c.unit END AS unit, CAST(m.year AS VARCHAR) AS year, i.name AS institution, i.state, i.sector,
-             i.control AS "public or private", CASE WHEN i.msi THEN 'Yes' ELSE 'No' END AS "minority-serving",
-             CASE WHEN i.medical_school THEN 'Yes' ELSE 'No' END AS "medical school",
-             round(m.value * CASE WHEN c.unit = 'thousands_usd' THEN 1000 ELSE 1 END) AS amount
-      FROM metrics m
-      JOIN measure_catalog c ON c.id = m.measure_id
-      JOIN institution_latest i USING (inst_id)`);
-
-    const worker = await perspective.worker();
-    // Declare types so years stay labels. Amounts must be float: Perspective integers are 32-bit and
-    // overflow above $2.1 billion, which the largest institutions exceed.
-    const schema = Object.fromEntries(Object.keys(data).map(k => [k, k === 'amount' ? 'float' : 'string']));
-    const table = await worker.table(schema);
-    await table.update(data);
-    const viewer = document.getElementById('viewer');
-    await viewer.load(table);
-    // One-click views so most people never need the settings panel
-    const fmt0 = { amount: { number_format: { maximumFractionDigits: 0 } } };
-    const base = { plugin: 'Datagrid', columns: ['amount'], aggregates: { amount: 'sum' }, columns_config: fmt0,
-                   split_by: ['year'], sort: [['amount', 'desc']], settings: false };
-    const VIEWS = {
-      sector: { ...base, group_by: ['sector'], filter: [['measure', '==', 'All R&D']] },
-      state: { ...base, group_by: ['state'], filter: [['measure', '==', 'All R&D']] },
-      institutions: { ...base, group_by: ['institution'], filter: [['measure', '==', 'All R&D']] },
-      agency: { ...base, group_by: ['measure'], filter: [['category', '==', 'Federal agency']] },
-      field: { ...base, group_by: ['measure'], filter: [['category', '==', 'Field of research']] },
-      chart: { plugin: 'Y Line', columns: ['amount'], aggregates: { amount: 'sum' }, group_by: ['year'],
-               split_by: ['measure'], filter: [['category', '==', 'Source of funds'], ['measure', '!=', 'All R&D']],
-               sort: [], settings: false },
-    };
-    const presets = document.getElementById('presets');
-    async function show(name) {
-      await viewer.restore(VIEWS[name]);
-      presets.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
-    }
-    presets.addEventListener('click', e => { if (e.target.dataset.view) show(e.target.dataset.view); });
-    await show('sector');
-    document.getElementById('status').remove();
-  </script>
+  <p>The pivot table moved to <a href="explore.html#table">Explore</a>.</p>
+  <script>location.replace('explore.html#table' + location.search);</script>
 </body>
 </html>
