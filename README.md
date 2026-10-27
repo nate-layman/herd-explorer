@@ -16,7 +16,7 @@ Each fiscal year has a standard-form file (institutions with $1 million or more 
 
 ## About the projections
 
-Charts can show a projection of the next few years. A projection is a best guess from past trends, not a forecast, and it may not reflect what actually happens. It cannot see policy changes, agency budgets, survey revisions or an institution's own plans.
+Charts can show a projection of the next few years. A projection is a best guess from past trends, and it may not reflect what actually happens. It cannot see policy changes, agency budgets, survey revisions or an institution's own plans.
 
 Projections come from a hierarchical generalized additive model fit with the R package mgcv. The model estimates one shared trend for the group you are looking at, lets each institution have its own level and growth rate, and pulls institutions with short or noisy histories toward the group trend. The shaded band shows the range the model considers plausible. The methods page on the site shows how well the model would have predicted past years.
 
