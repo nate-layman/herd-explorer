@@ -40,6 +40,6 @@ HERD Explorer is an independent project. It is not an official product of NCSES 
 
 ## Citation
 
-Layman, N. HERD Explorer. University of Idaho, AI4RA. https://github.com/nate-layman/herd-explorer
+Layman, N. HERD Explorer. University of Idaho, [AI4RA](https://ai4ra.uidaho.edu). https://github.com/nate-layman/herd-explorer
 
-This material is based upon work supported by the U.S. National Science Foundation under award 2427549.
+This material is based upon work supported by the U.S. National Science Foundation under the GRANTED program, award [2427549](https://www.nsf.gov/awardsearch/show-award?AWD_ID=2427549).

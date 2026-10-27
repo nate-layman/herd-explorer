@@ -62,4 +62,4 @@ The Ask page lets you ask questions in plain language. Bring your own key: a Uni
 
 Code: Apache 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Cite with [CITATION.cff](CITATION.cff).
 
-This material is based upon work supported by the U.S. National Science Foundation under award 2427549. HERD Explorer is a project of [AI4RA](https://github.com/AI4RA) at the University of Idaho.
+This material is based upon work supported by the U.S. National Science Foundation under the GRANTED program, award [2427549](https://www.nsf.gov/awardsearch/show-award?AWD_ID=2427549). HERD Explorer is a project of [AI4RA](https://ai4ra.uidaho.edu) at the University of Idaho ([AI4RA on GitHub](https://github.com/AI4RA)).

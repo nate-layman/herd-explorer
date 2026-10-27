@@ -30,7 +30,9 @@ export function renderLayout(active) {
       <p>Data: <a href="https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development">NCSES
         Higher Education Research and Development Survey</a>, FY 2012 to FY 2024. See <a href="data.html">Data &amp; sources</a>.</p>
       <p><a href="${REPORT_ERROR}">Report a data error</a> &middot; <a href="${REPO}">Source code on GitHub</a>
-        &middot; Apache 2.0 &middot; A project of <a href="https://github.com/AI4RA">AI4RA</a>, NSF award 2427549</p>
+        &middot; Apache 2.0</p>
+      <p>A project of <a href="https://ai4ra.uidaho.edu">AI4RA</a> at the University of Idaho, funded by the U.S. National Science Foundation
+        GRANTED program, award <a href="https://www.nsf.gov/awardsearch/show-award?AWD_ID=2427549">#2427549</a>.</p>
       <p class="disclaimer">${DISCLAIMER}</p>
     </footer>`);
 }
