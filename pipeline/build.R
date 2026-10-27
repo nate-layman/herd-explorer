@@ -32,6 +32,7 @@ dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 source(file.path(root, "pipeline", "validate.R"))
+source(file.path(root, "pipeline", "metrics.R"))
 
 fetch <- function(url, dest) {
   if (!file.exists(dest)) {
@@ -266,9 +267,10 @@ sources$built_on <- as.character(Sys.Date())
 dbWriteTable(con, "sources", sources)
 
 validate(con)
+build_metrics(con)
 
 # Parquet copies for downloads and for anyone who prefers files to a database
-for (t in c("facts", "institutions", "institution_groups", "national_published", "cogr_requirements", "sources")) {
+for (t in c("facts", "metrics", "measure_catalog", "institutions", "institution_groups", "national_published", "cogr_requirements", "sources")) {
   invisible(dbExecute(con, sprintf("COPY %s TO '%s' (FORMAT parquet, COMPRESSION zstd)", t, file.path(out_dir, paste0(t, ".parquet")))))
 }
 invisible(dbExecute(con, "CHECKPOINT"))
