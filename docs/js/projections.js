@@ -7,7 +7,7 @@ import { query, ensureView, lit } from './db.js';
 export const PROJECTIONS = 'https://huggingface.co/datasets/n8layman/herd-explorer-projections/resolve/main/';
 
 export const DISCLAIMER_SHORT =
-  'Projection: a best guess from past trends. It may not reflect what actually happens.';
+  'A projection shows where past trends lead if they continue. It does not account for known upcoming changes, such as federal budget or policy shifts, and may not reflect what actually happens.';
 
 let info = null;
 export async function projectedMeasures() {

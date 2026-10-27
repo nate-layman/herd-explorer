@@ -16,7 +16,7 @@ Each fiscal year has a standard-form file (institutions with $1 million or more 
 
 ## About the projections
 
-Charts can show a projection of the next few years. A projection is a best guess from past trends, and it may not reflect what actually happens. It cannot see policy changes, agency budgets, survey revisions or an institution's own plans.
+Charts can show a projection of the next few years. A projection shows where past trends lead if they continue. It does not account for known upcoming changes, such as federal budget or policy shifts, and may not reflect what actually happens. Nor can it see survey revisions or an institution's own plans.
 
 Projections come from a hierarchical generalized additive model fit with the R package mgcv. The model estimates one shared trend for the group you are looking at, lets each institution have its own level and growth rate, and pulls institutions with short or noisy histories toward the group trend. The shaded band shows the range the model considers plausible. The methods page on the site shows how well the model would have predicted past years.
 
@@ -24,7 +24,7 @@ Projections come from a hierarchical generalized additive model fit with the R p
 
 HERD Explorer is an independent project. It is not an official product of NCSES or the U.S. National Science Foundation, and neither NCSES, NSF nor the University of Idaho endorses it or is responsible for its content.
 
-The data, charts and projections are provided "as is," without warranty of any kind, as described in the [LICENSE](LICENSE). They may contain errors introduced by the reshaping. They are not financial, budget, legal or investment advice. Before relying on a figure for a decision, check it against the official NCSES tables. Projections are best guesses from past trends and may not reflect what actually happens.
+The data, charts and projections are provided "as is," without warranty of any kind, as described in the [LICENSE](LICENSE). They may contain errors introduced by the reshaping. They are not financial, budget, legal or investment advice. Before relying on a figure for a decision, check it against the official NCSES tables. Projections show where past trends lead if they continue and may not reflect what actually happens.
 
 ## Found an error?
 

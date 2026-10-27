@@ -14,7 +14,7 @@ size_categories:
 
 Simulated projections of research and development spending at U.S. colleges and universities, FY 2025 to FY 2029, for every dollar measure in [HERD Explorer](https://nate-layman.github.io/herd-explorer/). The site reads these files directly in the browser.
 
-**A projection is a best guess from past trends.** It may not reflect what actually happens. The model cannot see policy changes, agency budgets, survey revisions or an institution's own plans.
+**A projection shows where past trends lead if they continue.** It does not account for known upcoming changes, such as federal budget or policy shifts, and may not reflect what actually happens. Nor can it see survey revisions or an institution's own plans.
 
 ## Files
 
