@@ -9,6 +9,7 @@ const TABLES = [
 ];
 
 let ready = null;
+let database = null;
 
 async function init() {
   const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
@@ -18,6 +19,7 @@ async function init() {
   const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), new Worker(workerUrl));
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   URL.revokeObjectURL(workerUrl);
+  database = db;
 
   const base = new URL('data/', document.baseURI).href;
   const conn = await db.connect();
@@ -63,4 +65,19 @@ export async function columns(sql) {
     out[f.name] = typeof v[0] === 'bigint' ? Array.from(v, Number) : Array.from(v);
   }
   return out;
+}
+
+// Register a Parquet file under docs/data/ as a view the first time it is needed
+const registered = new Map();
+export async function ensureView(view, path) {
+  if (!registered.has(view)) {
+    registered.set(view, (async () => {
+      const conn = await connection();
+      const db = database;
+      const url = new URL(`data/${path}`, document.baseURI).href;
+      await db.registerFileURL(path, url, duckdb.DuckDBDataProtocol.HTTP, false);
+      await conn.query(`CREATE VIEW ${view} AS SELECT * FROM read_parquet('${path}')`);
+    })());
+  }
+  return registered.get(view);
 }

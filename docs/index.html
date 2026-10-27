@@ -19,7 +19,7 @@
       <label>Split by
         <select id="split">
           <option value="">Nothing (national total)</option>
-          <option value="sector">Institution type (Carnegie 2021)</option>
+          <option value="sector">Institution type (Carnegie 2021, top 8)</option>
           <option value="control">Public or private</option>
           <option value="state">State (top 8, rest combined)</option>
           <option value="msi">Minority-serving institution</option>
@@ -75,13 +75,13 @@
         WHERE m.measure_id = ${lit(id)}
         GROUP BY ALL ORDER BY grp, year`);
 
-      // States: keep the 8 largest by latest year, fold the rest into "All other states"
-      if (split === 'state') {
+      // More groups than palette colors: keep the 8 largest by latest year, fold the rest into "All other"
+      if (new Set(rows.map(r => r.grp)).size > 8) {
         const last = Math.max(...rows.map(r => r.year));
         const top = rows.filter(r => r.year === last).sort((a, b) => b.value - a.value).slice(0, 8).map(r => r.grp);
         const folded = new Map();
         for (const r of rows) {
-          const g = top.includes(r.grp) ? r.grp : 'All other states';
+          const g = top.includes(r.grp) ? r.grp : (split === 'state' ? 'All other states' : 'All other');
           const k = `${g}|${r.year}`;
           folded.set(k, { grp: g, year: r.year, value: (folded.get(k)?.value ?? 0) + r.value });
         }
@@ -110,7 +110,7 @@
 
       const yTitle = mode === 'index' ? 'Index, FY 2012 = 100' : mode === 'share' ? 'Percent of national total' : unitAxis(m.unit);
       const Plotly = await plotly();
-      $('trend').innerHTML = '';
+      if (!$('trend').data) $('trend').innerHTML = '';
       Plotly.react('trend', traces, {
         ...BASE_LAYOUT, showlegend: groups.length > 1,
         yaxis: { ...BASE_LAYOUT.yaxis, title: { text: yTitle }, tickprefix: mode === 'value' && m.unit === 'thousands_usd' ? '$' : '',

@@ -32,10 +32,12 @@
           <option value="none">None</option>
         </select>
       </label>
+      <label class="inline"><span><input type="checkbox" id="project" /> Show projection to FY 2029</span></label>
     </div>
     <div id="chips" class="chips"></div>
 
     <div id="chart" class="chart"><p class="status">Loading the database in your browser&hellip;</p></div>
+    <p id="proj-note" class="chart-note projection-note" hidden></p>
     <p id="note" class="chart-note"></p>
   </main>
 
@@ -44,6 +46,7 @@
     import { query, lit } from './js/db.js';
     import { plotly, PALETTE, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
+    import { hasProjection, projectionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
     renderLayout('compare.html');
     const $ = id => document.getElementById(id);
@@ -96,6 +99,23 @@
                  marker: { size: 7 }, hovertemplate: mode === 'value' ? '%{text}' : '%{y:.0f} (%{text})' };
       });
 
+      const canProject = await hasProjection(id);
+      $('project').disabled = !canProject;
+      $('project').parentElement.title = canProject ? '' : 'Projections are available for total R&D, the funding sources and NIH/HHS, NSF and DOD.';
+      if ($('project').checked && canProject) {
+        const bands = await projectionBands(id, `SELECT inst_id, inst_id AS grp FROM institution_latest WHERE inst_id IN (${selected.map(lit).join(',')})`);
+        selected.forEach((sid, k) => {
+          const pts = rows.filter(r => r.inst_id === sid);
+          const b = bands.filter(x => x.grp === sid);
+          if (!pts.length || !b.length) return;
+          const base = pts[0].value;
+          const scaleP = v => mode === 'index' ? 100 * v / base : scale(v);
+          traces.push(...bandTraces(b, pts[pts.length - 1], PALETTE[k % PALETTE.length], scaleP, insts.find(i => i.inst_id === sid).name));
+        });
+      }
+      $('proj-note').hidden = !($('project').checked && canProject);
+      $('proj-note').innerHTML = `${DISCLAIMER_SHORT} Shaded bands show the 80% and 90% ranges. <a href="data.html#methods">How projections are made</a>.`;
+
       if (context === 'sector') {
         const sectors = [...new Set(selected.map(sid => insts.find(i => i.inst_id === sid).sector))];
         const med = await query(`
@@ -111,7 +131,7 @@
         }
       }
 
-      $('chart').innerHTML = '';
+      if (!$('chart').data) $('chart').innerHTML = '';
       Plotly.react('chart', traces, {
         ...BASE_LAYOUT,
         yaxis: { ...BASE_LAYOUT.yaxis, title: { text: mode === 'index' ? 'Index, FY 2012 = 100' : unitAxis(m.unit) },
@@ -135,7 +155,7 @@
       if (inst && !selected.includes(inst.inst_id)) { selected.push(inst.inst_id); update(); }
       $('search').value = '';
     });
-    for (const id of ['measure', 'mode', 'context']) $(id).addEventListener('change', update);
+    for (const id of ['measure', 'mode', 'context', 'project']) $(id).addEventListener('change', update);
     update();
   </script>
 </body>
