@@ -34,7 +34,6 @@ An interactive site for exploring the NCSES Higher Education Research and Develo
 | Explore | Drag-and-drop charts on the full table | Graphic Walker |
 | Pivot | Pivot grid and charts for power users, with export | Perspective |
 | Ask | Questions about the data in plain language; the model writes SQL that runs locally in DuckDB-WASM | Key passthrough copied from Promptulus |
-| Every institution | One small chart per institution, sortable and filterable by growth, size, state and projected direction, to spot trends across hundreds of series | trelliscopejs (R, built offline, static output) |
 | Data & sources | Provenance, survey notes, downloads, methods and backtest results | |
 
 Every page has a footer linking the GitHub repo and a "Report a data error" issue template. Every chart carries a source line.
@@ -43,7 +42,7 @@ Every page has a footer linking the GitHub repo and a "Report a data error" issu
 
 ## Front end vs. R
 
-The site is a fast JavaScript front end. R runs offline only: mgcv projection fits, the trelliscopejs "Every institution" display, and a DataExplorer data-quality report. In the browser, R loads through webR only when someone asks for a projection on a custom slice. Shinylive was considered and set aside: it loads the R runtime before anything appears.
+The site is a fast JavaScript front end. R runs offline only: the data build and the mgcv projection fits. In the browser, R loads through webR only when someone asks for a projection on a custom slice. Shinylive was considered and set aside: it loads the R runtime before anything appears. A Trelliscope "Every institution" page was considered and dropped (2026-10-27): Explore, Pivot and Compare cover it.
 
 ## Projections
 
