@@ -36,6 +36,13 @@
     .input-row { display: flex; gap: 0.5rem; }
     .input-row textarea { flex: 1; font: inherit; padding: 0.5rem 0.7rem; border-radius: 0.5rem; border: 1px solid var(--line); resize: vertical; min-height: 2.8rem; }
     .answer-note { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+    .tabs { display: flex; gap: 0.2rem; border-bottom: 1px solid var(--line); margin-bottom: 1rem; }
+    .tabs button { font: inherit; font-weight: 600; padding: 0.5rem 1rem; border: none; background: none; color: var(--muted);
+                   border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+    .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+    .panel[hidden] { display: none; }
+    #panel-how ol > li { margin-bottom: 0.6rem; }
+    #panel-how pre { background: var(--panel); padding: 0.6rem 0.8rem; border-radius: 0.4rem; overflow-x: auto; font-size: 0.8rem; }
   </style>
 </head>
 <body>
@@ -46,6 +53,12 @@
       see exactly what was counted. AI can misread a question or write the wrong query, so check important numbers on the
       Trends or Compare pages.</p>
 
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-ask" aria-controls="panel-ask" aria-selected="true">Ask</button>
+      <button role="tab" id="tab-how" aria-controls="panel-how" aria-selected="false">How it works</button>
+    </div>
+
+    <section id="panel-ask" class="panel" role="tabpanel" aria-labelledby="tab-ask">
     <form class="key-row" id="key-form">
       <label for="key">API key</label>
       <input id="key" type="password" autocomplete="off" placeholder="MindRouter (mr2_...), Anthropic, OpenAI or Google Gemini key" />
@@ -64,6 +77,57 @@
     <p class="chart-note">Answers come from NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars, with
       institution type from the 2021 Carnegie Classification. Queries are read-only and run in your browser; only your
       question and the query results are sent to the AI provider you chose.</p>
+    </section>
+
+    <section id="panel-how" class="panel" role="tabpanel" aria-labelledby="tab-how" hidden>
+      <p>The AI model never sees the database. It writes SQL; your browser runs it; the model reads the results and
+        answers. This is the approach of <a href="https://github.com/ui-insight/data-crawler-carl">Data Crawler Carl</a>,
+        an open-source AI data explorer from AI4RA, applied here to the HERD data.</p>
+      <ol>
+        <li><strong>The model is told what the data look like.</strong> Before your first question it receives a description of
+          the tables, every measure with its meaning and coverage, the institution types, and rules for answering: dollars are
+          in thousands, report readable units, say which measure and years were used, never state a number that was not in the
+          results.</li>
+        <li><strong>It writes a query.</strong> The model answers your question with SQL in a marked block, for example:
+          <pre>SELECT i.name, m.year, m.value / 1000 AS rd_millions
+FROM metrics m JOIN institution_latest i USING (inst_id)
+WHERE m.measure_id = 'source_all_r_d' AND i.state = 'ID'
+ORDER BY m.year</pre></li>
+        <li><strong>Your browser checks and runs it.</strong> Only a single SELECT is allowed. Anything that could read files or
+          web addresses, change data, load extensions or run more than one statement is refused. The query runs in DuckDB, a
+          database engine running inside this page, against the same data as the rest of the site. Results are capped at 1,000
+          rows.</li>
+        <li><strong>The model reads the results.</strong> Up to 60 rows go back to the model, which explains them in plain
+          language. If a query failed or returned the wrong thing, it can write a corrected one, up to three rounds per
+          question.</li>
+        <li><strong>Charts are data, not code.</strong> When a chart helps, the model describes it (chart type, a query, which
+          columns go on each axis). The page checks that description, runs the query, and draws the chart itself. Nothing the
+          model writes is run as code.</li>
+        <li><strong>You can see the work.</strong> Every answer has a <em>Show the SQL</em> panel with the exact query and its
+          results, so you can check what was counted.</li>
+      </ol>
+
+      <h2>What leaves your browser</h2>
+      <ul>
+        <li>Your questions, the description of the data from step 1, and the query results go to the AI provider your key
+          belongs to. The HERD data themselves stay in your browser.</li>
+        <li>Your key stays in this browser tab (session storage) and is sent only to its own provider. A key passed in a link
+          (<code>ask.html?key=...</code>) is read once and removed from the address bar. The key box and its routing by key
+          prefix come from <a href="https://github.com/AI4RA/promptulus">Promptulus</a>: <code>mr2_</code> keys go to University
+          of Idaho MindRouter, <code>sk-ant-</code> to Anthropic, other <code>sk-</code> keys to OpenAI, anything else to
+          Google Gemini.</li>
+      </ul>
+
+      <h2>Limits</h2>
+      <ul>
+        <li>The model can misread a question or pick the wrong measure. Open <em>Show the SQL</em> and check important numbers
+          on the Trends or Compare pages.</li>
+        <li>Answers cover FY 2012 to FY 2024. Questions about the future are pointed to the projections on Trends and Compare.</li>
+        <li>Answers depend on the model behind your key; larger models write better queries.</li>
+      </ul>
+      <p class="chart-note">Code: <a href="https://github.com/nate-layman/herd-explorer/blob/main/docs/ask.html">docs/ask.html</a>
+        and <a href="https://github.com/nate-layman/herd-explorer/blob/main/docs/js/llm.js">docs/js/llm.js</a>.</p>
+    </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/marked@18.1.1/lib/marked.umd.js"></script>
@@ -76,6 +140,17 @@
 
     renderLayout('ask.html');
     const $ = id => document.getElementById(id);
+
+    function openTab(name) {
+      for (const n of ['ask', 'how']) {
+        $(`tab-${n}`).setAttribute('aria-selected', String(n === name));
+        $(`panel-${n}`).hidden = n !== name;
+      }
+      window.history.replaceState(null, '', name === 'how' ? '#how' : location.pathname);
+    }
+    $('tab-ask').onclick = () => openTab('ask');
+    $('tab-how').onclick = () => openTab('how');
+    if (location.hash === '#how') openTab('how');
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
     // ── Key: passed in a ?key= link or typed in ─────────────────────────────
