@@ -94,8 +94,19 @@
       <dt>\(f\)</dt><dd>smooth function of last year's log size (thin-plate spline, 6 basis functions)</dd>
     </dl>
 
-    <p>Fit by REML in mgcv, giving coefficients \(\hat\beta\) (all of \(\mu, a, u\)) with covariance \(V_\beta\).
-      \(f\) is fit in a second step on the absolute residuals.</p>
+    <p>Fit by REML in mgcv, giving coefficients \(\hat\beta\) (all of \(\mu, a, u\)) with covariance \(V_\beta\).</p>
+
+    <h3>Noise by size</h3>
+    <p>The noise function \(f\) is estimated from the residuals:</p>
+    <ol>
+      <li>Fit the model above with a single residual standard deviation and keep the residuals \(\hat\varepsilon_{it}\).</li>
+      <li>Regress the log absolute residual on last year's log size with a thin-plate spline (6 basis functions, REML):
+        $$\log\left|\hat\varepsilon_{it}\right| = f(y_{i,t-1}) + \nu_{it}$$</li>
+      <li>Convert to a standard deviation. For normal errors \(\mathbb{E}\left[\log|\varepsilon|\right] = \log\sigma - 0.635\), so
+        $$\hat\sigma(y) = \exp\!\left(\hat f(y) + 0.635\right)$$</li>
+    </ol>
+    <p>Each institution's projected noise uses its size in the last observed year, \(\hat\sigma(y_{iT})\), for all five
+      years.</p>
 
     <h3>Projection</h3>
     <p>From \(T = 2024\), 200 draws \(m\), horizons \(h = 1, \dots, 5\), with every random term widened by \(c = 1.3\)
