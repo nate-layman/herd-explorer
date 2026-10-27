@@ -42,7 +42,7 @@ Every page has a footer linking the GitHub repo and a "Report a data error" issu
 
 ## Front end vs. R
 
-The site is a fast JavaScript front end. R runs offline only: the data build and the mgcv projection fits. In the browser, R loads through webR only when someone asks for a projection on a custom slice. Shinylive was considered and set aside: it loads the R runtime before anything appears. A Trelliscope "Every institution" page was considered and dropped (2026-10-27): Explore, Pivot and Compare cover it.
+The site is a fast JavaScript front end. R runs offline only: the data build and the mgcv projection fits. Nothing in R runs in the browser: projections for any slice come from precomputed draws. Shinylive was considered and set aside: it loads the R runtime before anything appears. A Trelliscope "Every institution" page was considered and dropped (2026-10-27): Explore, Pivot and Compare cover it.
 
 ## Projections
 
