@@ -117,7 +117,7 @@
       const canProject = mode !== 'share' && await hasProjection(id);
       $('project').disabled = !canProject;
       $('project').parentElement.title = canProject ? '' :
-        (mode === 'share' ? 'Projections are not shown for shares.' : 'Projections are available for total R&D, the funding sources and NIH/HHS, NSF and DOD.');
+        (mode === 'share' ? 'Projections are not shown for shares.' : 'Projections are available for total R&D, each funding source and each federal agency.');
       const showProj = $('project').checked && canProject;
       if (showProj) {
         const grpSql = top ? `CASE WHEN ${groupExpr} IN (${top.map(lit).join(',')}) THEN ${groupExpr} ELSE ${lit(otherLabel)} END` : groupExpr;

@@ -26,7 +26,7 @@ suppressPackageStartupMessages({
 set.seed(20261027)
 measures <- c("source_all_r_d", "source_federal_government", "source_institution_funds", "source_business",
               "source_nonprofit_organizations", "source_state_and_local_government",
-              "agency_hhs", "agency_nsf", "agency_dod")
+              "agency_hhs", "agency_nsf", "agency_dod", "agency_doe", "agency_nasa", "agency_usda", "agency_other_agencies")
 horizon <- 5L          # years projected past the last year of data
 n_draws <- 200L        # draws stored per institution-year
 gp_range <- 3           # Gaussian process range in years (3, 5 and 8 scored within 0.001 CRPS in backtests)

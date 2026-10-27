@@ -101,7 +101,7 @@
 
       const canProject = await hasProjection(id);
       $('project').disabled = !canProject;
-      $('project').parentElement.title = canProject ? '' : 'Projections are available for total R&D, the funding sources and NIH/HHS, NSF and DOD.';
+      $('project').parentElement.title = canProject ? '' : 'Projections are available for total R&D, each funding source and each federal agency.';
       if ($('project').checked && canProject) {
         const bands = await projectionBands(id, `SELECT inst_id, inst_id AS grp FROM institution_latest WHERE inst_id IN (${selected.map(lit).join(',')})`);
         selected.forEach((sid, k) => {
