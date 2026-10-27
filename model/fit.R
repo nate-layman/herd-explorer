@@ -9,7 +9,7 @@
 # keep the shared uncertainty) plus AR(1) residual paths that start from each
 # institution's last observed residual.
 #
-# Writes to docs/data/projections/:
+# Writes to model/output/ (published to Hugging Face by model/publish.sh):
 #   <measure>.parquet   inst_id, year, draw, value (thousands of dollars), 200 draws per institution-year
 #   backtest.parquet    CRPS and interval coverage by model, cutoff and horizon
 #   model_info.parquet  settings and fitted parameters for the methods page
@@ -24,9 +24,8 @@ suppressPackageStartupMessages({
 })
 
 set.seed(20261027)
-measures <- c("source_all_r_d", "source_federal_government", "source_institution_funds", "source_business",
-              "source_nonprofit_organizations", "source_state_and_local_government",
-              "agency_hhs", "agency_nsf", "agency_dod", "agency_doe", "agency_nasa", "agency_usda", "agency_other_agencies")
+# Every dollar measure; personnel counts start in FY 2022, too few years to model
+measures <- NULL  # filled from measure_catalog once the database is open
 horizon <- 5L          # years projected past the last year of data
 n_draws <- 200L        # draws stored per institution-year
 gp_range <- 3           # Gaussian process range in years (3, 5 and 8 scored within 0.001 CRPS in backtests)
@@ -34,11 +33,13 @@ min_years <- 4L        # institutions need this many positive years to be modele
 
 root <- getwd()
 if (!file.exists(file.path(root, "model", "fit.R"))) stop("run from the repository root: Rscript model/fit.R")
-out_dir <- file.path(root, "docs", "data", "projections")
+# Published to Hugging Face by model/publish.sh, not committed to git
+out_dir <- file.path(root, "model", "output")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 con <- dbConnect(duckdb(), file.path(root, "docs", "data", "herd.duckdb"), read_only = TRUE)
 on.exit(dbDisconnect(con, shutdown = TRUE), add = TRUE)
+measures <- dbGetQuery(con, "SELECT id FROM measure_catalog WHERE unit = 'thousands_usd' ORDER BY id")$id
 
 # Small groups pool into "Other" so every sector curve has enough institutions behind it
 inst <- dbGetQuery(con, "
@@ -248,8 +249,17 @@ message("production model: ", labels[[chosen]])
 info <- list()
 for (id in measures) {
   d <- load_measure(id)
-  m <- if (chosen == "growth") fit_growth(d) else fit_model(d, gp_range)
-  sim <- if (chosen == "growth") simulate_growth(m, horizon, n_draws, widen) else simulate(m, horizon, n_draws)
+  skip <- function(reason) {
+    message(sprintf("%-36s skipped: %s", id, reason))
+    info[[id]] <<- data.frame(measure_id = id, status = "unavailable", reason = reason)
+  }
+  if (length(unique(d$inst_id)) < 30) { skip("Fewer than 30 institutions reported this measure in enough years to model."); next }
+  fit <- tryCatch({
+    m <- if (chosen == "growth") fit_growth(d) else fit_model(d, gp_range)
+    list(m = m, sim = if (chosen == "growth") simulate_growth(m, horizon, n_draws, widen) else simulate(m, horizon, n_draws))
+  }, error = function(e) e)
+  if (inherits(fit, "error")) { skip(paste("The model did not fit this measure:", conditionMessage(fit))); next }
+  m <- fit$m; sim <- fit$sim
   long <- data.frame(
     inst_id = rep(sim$nd$inst_id, times = n_draws),
     year = rep(sim$nd$year, times = n_draws),
@@ -257,10 +267,10 @@ for (id in measures) {
     value = as.vector(exp(sim$logv))
   )
   duckdb_register(con, "proj", long)
-  invisible(dbExecute(con, sprintf("COPY (SELECT * FROM proj ORDER BY inst_id, year, draw) TO '%s' (FORMAT parquet, COMPRESSION zstd)",
+  invisible(dbExecute(con, sprintf("COPY (SELECT inst_id, year::SMALLINT AS year, draw::SMALLINT AS draw, value::FLOAT AS value FROM proj ORDER BY inst_id, year, draw) TO '%s' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 20000)",
                                    file.path(out_dir, paste0(id, ".parquet")))))
   duckdb_unregister(con, "proj")
-  info[[id]] <- data.frame(measure_id = id, model = labels[[chosen]], institutions = nlevels(d$inst), observations = nrow(d),
+  info[[id]] <- data.frame(measure_id = id, status = "ok", reason = NA_character_, model = labels[[chosen]], institutions = nlevels(d$inst), observations = nrow(d),
                            sd_year_shock = if (chosen == "growth") round(m$sd_year, 4) else NA,
                            sd_year_sector_shock = if (chosen == "growth") round(m$sd_ys, 4) else NA,
                            sd_residual_log = round(if (chosen == "growth") m$sd_resid else m$resid_sd, 4),
@@ -275,6 +285,12 @@ write_parquet <- function(df, name) {
   invisible(dbExecute(con, sprintf("COPY tmp TO '%s' (FORMAT parquet)", file.path(out_dir, name))))
   duckdb_unregister(con, "tmp")
 }
+# Measures not modeled at all, with the reason the site shows
+not_modeled <- dbGetQuery(con, "SELECT id FROM measure_catalog WHERE unit <> 'thousands_usd'")$id
+for (id in not_modeled) info[[id]] <- data.frame(measure_id = id, status = "unavailable",
+  reason = "Personnel counts are released only from FY 2022, too few years to model.")
+all_cols <- unique(unlist(lapply(info, names)))
+info <- lapply(info, function(x) { for (c in setdiff(all_cols, names(x))) x[[c]] <- NA; x[all_cols] })
 write_parquet(do.call(rbind, info), "model_info.parquet")
 write_parquet(bt_summary, "backtest.parquet")
 write_parquet(overall, "backtest_overall.parquet")

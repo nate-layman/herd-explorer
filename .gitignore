@@ -8,3 +8,6 @@ __pycache__/
 # Raw NCSES downloads are re-fetched by the pipeline, not committed
 pipeline/raw/
 pipeline/build/
+
+# Projection draws live on Hugging Face, not in git (see model/publish.sh)
+model/output/

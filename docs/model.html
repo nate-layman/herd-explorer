@@ -120,15 +120,21 @@ sigma(size) = exp(fitted + 0.635)        # E[log|z|] = -0.635 for normal z</pre>
       <li>Testing used total R&amp;D; the same model and widening factor are applied to the other twelve measures.</li>
     </ul>
 
+    <h2>Download the projections</h2>
+    <p>Every simulated future is published as a dataset on Hugging Face:
+      <a href="https://huggingface.co/datasets/n8layman/herd-explorer-projections">n8layman/herd-explorer-projections</a>
+      (CC BY 4.0), one Parquet file per measure, with the model and backtest tables.</p>
+
     <h2>Reproduce it</h2>
     <p>Everything is in the <a id="repo" href="#">GitHub repository</a>. Run <code>Rscript pipeline/build.R</code> to rebuild
-      the data and <code>Rscript model/fit.R</code> to refit, test and simulate. The model is refit once a year when NCSES
+      the data and <code>Rscript model/fit.R</code> to refit, test and simulate, then <code>model/publish.sh</code> to publish. The model is refit once a year when NCSES
       releases a new survey year.</p>
   </main>
 
   <script type="module">
     import { renderLayout, REPO } from './js/layout.js';
-    import { query, ensureView, lit } from './js/db.js';
+    import { query, ensureView } from './js/db.js';
+    import { PROJECTIONS } from './js/projections.js';
 
     renderLayout('model.html');
     const $ = id => document.getElementById(id);
@@ -137,7 +143,7 @@ sigma(size) = exp(fitted + 0.635)        # E[log|z|] = -0.635 for normal z</pre>
     const pct = v => `${Math.round(100 * v)}%`;
 
     for (const v of ['backtest_overall', 'backtest_by_size', 'backtest_calibration', 'model_info'])
-      await ensureView(v, `projections/${v}.parquet`);
+      await ensureView(v, `${PROJECTIONS}${v}.parquet`);
 
     const overall = await query('SELECT * FROM backtest_overall ORDER BY crps');
     $('overall').innerHTML = '<tr><th>Approach</th><th>CRPS (lower is better)</th><th>Real outcomes inside the 80% range</th><th>Inside the 90% range</th></tr>' +

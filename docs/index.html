@@ -36,6 +36,7 @@
         </select>
       </label>
       <label class="inline"><span><input type="checkbox" id="project" /> Show projection to FY 2029</span></label>
+      <span id="proj-flag" class="proj-flag" role="status" hidden></span>
     </div>
 
     <div id="trend" class="chart"><p class="status">Loading the database in your browser&hellip;</p></div>
@@ -57,7 +58,7 @@
     import { query, lit } from './js/db.js';
     import { plotly, PALETTE, OTHER, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
-    import { hasProjection, projectionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
+    import { updateToggle, projectionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
     renderLayout('index.html');
 
@@ -114,10 +115,8 @@
       });
 
       // Projection bands, summed over the same groups (not available for shares of a total)
-      const canProject = mode !== 'share' && await hasProjection(id);
-      $('project').disabled = !canProject;
-      $('project').parentElement.title = canProject ? '' :
-        (mode === 'share' ? 'Projections are not shown for shares.' : 'Projections are available for total R&D, each funding source and each federal agency.');
+      const canProject = await updateToggle($('project'), $('proj-flag'), id,
+        mode === 'share' ? 'projections are not shown for shares of a total.' : null);
       const showProj = $('project').checked && canProject;
       if (showProj) {
         const grpSql = top ? `CASE WHEN ${groupExpr} IN (${top.map(lit).join(',')}) THEN ${groupExpr} ELSE ${lit(otherLabel)} END` : groupExpr;

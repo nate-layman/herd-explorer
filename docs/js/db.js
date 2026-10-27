@@ -74,9 +74,11 @@ export async function ensureView(view, path) {
     registered.set(view, (async () => {
       const conn = await connection();
       const db = database;
-      const url = new URL(`data/${path}`, document.baseURI).href;
-      await db.registerFileURL(path, url, duckdb.DuckDBDataProtocol.HTTP, false);
-      await conn.query(`CREATE VIEW ${view} AS SELECT * FROM read_parquet('${path}')`);
+      // A full URL (such as the Hugging Face projections) is used as is; anything else is under docs/data/
+      const url = /^https?:/.test(path) ? path : new URL(`data/${path}`, document.baseURI).href;
+      const name = `${view}.parquet`;
+      await db.registerFileURL(name, url, duckdb.DuckDBDataProtocol.HTTP, false);
+      await conn.query(`CREATE VIEW ${view} AS SELECT * FROM read_parquet('${name}')`);
     })());
   }
   return registered.get(view);

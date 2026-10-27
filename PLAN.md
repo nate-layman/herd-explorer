@@ -64,7 +64,9 @@ bam(dlog ~ sector + s(state, bs = "re") + s(inst, bs = "re") + s(fyear, bs = "re
 - Shared year and year-by-sector shocks are simulated for future years, so group totals carry shared uncertainty.
 - Year-to-year noise is a smooth function of institution size (`gam(log|resid| ~ s(lag_y))`, a two-step location-scale model). Without it, bands were far too wide for large institutions and too narrow for small ones.
 - Intervals are widened by a factor chosen in the backtest (1.3) so coverage matches nominal in every size group.
-- 200 draws per institution and year, FY 2025-2029, thirteen measures (total, six funding sources, seven agencies), stored as Parquet. The site sums draws within any group before taking percentiles.
+- 200 draws per institution and year, FY 2025-2029, for every dollar measure (51). Personnel is not modeled (released only from FY 2022); the site shows a warning flag with the reason for any measure without a projection.
+- Draws are published to the Hugging Face dataset [n8layman/herd-explorer-projections](https://huggingface.co/datasets/n8layman/herd-explorer-projections) by `model/publish.sh`, not committed to git. The site loads one measure's file (70 KB to 1.8 MB) only when projections are turned on for it. Hugging Face redirects to its CDN, so DuckDB-WASM downloads the whole file rather than byte ranges; move to a non-redirecting host (Cloudflare R2, GitHub Pages) if files grow large.
+- The site sums draws within any group before taking percentiles.
 - **Disclaimer on every projection.** Any chart showing a projection carries a short note beside it: "Projection: a best guess from past trends, not a forecast. It may not reflect what actually happens. How projections are made." The link goes to the methods page, which explains the model in plain language, shows backtest results, and lists what the model cannot see (policy changes, agency budgets, survey revisions, an institution's own plans).
 
 ## Ask (AI questions)

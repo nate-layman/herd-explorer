@@ -1,8 +1,11 @@
 // Projection bands for any group of institutions, from the simulation draws in
-// docs/data/projections/<measure>.parquet. Draws are summed within each group before
+// <measure>.parquet files on Hugging Face (see PROJECTIONS). Draws are summed within each group before
 // taking percentiles, because percentiles of institutions do not add up to the
 // percentile of their total.
 import { query, ensureView, lit } from './db.js';
+
+// Projection draws are published to Hugging Face by model/publish.sh
+export const PROJECTIONS = 'https://huggingface.co/datasets/n8layman/herd-explorer-projections/resolve/main/';
 
 export const DISCLAIMER_SHORT =
   'Projection: a best guess from past trends, not a forecast. It may not reflect what actually happens.';
@@ -10,14 +13,26 @@ export const DISCLAIMER_SHORT =
 let info = null;
 export async function projectedMeasures() {
   info ??= (async () => {
-    await ensureView('model_info', 'projections/model_info.parquet');
+    await ensureView('model_info', `${PROJECTIONS}model_info.parquet`);
     return query('SELECT * FROM model_info');
   })();
   return info;
 }
 
 export async function hasProjection(measureId) {
-  return (await projectedMeasures()).some(m => m.measure_id === measureId);
+  return (await projectedMeasures()).some(m => m.measure_id === measureId && m.status === 'ok');
+}
+
+// Turn the projection checkbox on or off for a measure and say why when it is off.
+// extraReason covers page-level cases, such as shares of a total.
+export async function updateToggle(checkbox, flag, measureId, extraReason = null) {
+  const info = (await projectedMeasures()).find(m => m.measure_id === measureId);
+  const reason = extraReason ?? (info?.status === 'ok' ? null
+    : info?.reason ?? 'No projection has been fit for this measure.');
+  checkbox.disabled = !!reason;
+  flag.hidden = !reason;
+  flag.textContent = reason ? `⚠ Projection unavailable: ${reason}` : '';
+  return !reason;
 }
 
 // groupSql: a SELECT returning (inst_id, grp) for the institutions to include.
@@ -26,7 +41,7 @@ export async function hasProjection(measureId) {
 // the last year) contribute their last reported value, held flat.
 export async function projectionBands(measureId, groupSql) {
   const view = `proj_${measureId}`;
-  await ensureView(view, `projections/${measureId}.parquet`);
+  await ensureView(view, `${PROJECTIONS}${measureId}.parquet`);
   return query(`
     WITH groups AS (${groupSql}),
     last_year AS (SELECT max(year) AS y FROM metrics WHERE measure_id = ${lit(measureId)}),
