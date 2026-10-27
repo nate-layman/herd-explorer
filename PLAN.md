@@ -81,6 +81,6 @@ bam(dlog ~ sector + s(state, bs = "re") + s(inst, bs = "re") + s(fyear, bs = "re
 1. Scaffold: repo, license, NOTICE, CITATION, README, issue templates, Pages workflow.
 2. Pipeline: download, combine, tidy, validate against published totals, write Parquet and downloads.
 3. First release: Trends, Compare, Explore, Pivot, Data & sources.
-4. Projections: offline fits, backtests, webR refits for custom slices.
+4. Projections: offline fits, backtests, draws for every dollar measure published to Hugging Face. (Done.)
 5. Ask page.
 6. Yearly refresh when NCSES publishes a new year.
