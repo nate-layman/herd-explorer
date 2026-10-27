@@ -1,0 +1,10 @@
+.env
+.Renviron
+.DS_Store
+node_modules/
+*.log
+__pycache__/
+.venv/
+# Raw NCSES downloads are re-fetched by the pipeline, not committed
+pipeline/raw/
+pipeline/build/

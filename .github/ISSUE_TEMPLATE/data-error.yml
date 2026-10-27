@@ -1,0 +1,31 @@
+name: Report a data error
+description: A number on the site looks wrong or does not match NCSES.
+labels: ["data error"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or link
+      description: Paste the address of the page or view where you saw it.
+    validations:
+      required: true
+  - type: input
+    id: slice
+    attributes:
+      label: Institution, group or slice
+      placeholder: e.g. University of Idaho, or all public institutions in Idaho
+    validations:
+      required: true
+  - type: input
+    id: year
+    attributes:
+      label: Fiscal year(s)
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you saw and what you expected
+      description: If you have an NCSES table or source that shows the right value, link it.
+    validations:
+      required: true

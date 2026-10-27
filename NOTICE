@@ -1,0 +1,43 @@
+HERD Explorer
+Copyright 2026 Nathan Layman
+
+Author: Nathan Layman, University of Idaho
+https://github.com/nate-layman/herd-explorer
+
+HERD Explorer is a project of AI4RA at the University of Idaho.
+https://github.com/AI4RA
+
+This material is based upon work supported by the U.S. National Science
+Foundation under the GRANTED program, award number 2427549, "Crossing the
+Innovation Valley of Death: Democratizing Data and Artificial Intelligence
+for Research Administration." Any opinions, findings, conclusions or
+recommendations expressed in this material are those of the author and do
+not necessarily reflect the views of the National Science Foundation.
+
+This file is an attribution notice under Section 4(d) of the Apache
+License, Version 2.0. Any redistribution of this work, or of a derivative
+work, must include a readable copy of the attribution notices above, crediting
+all of the following: Nathan Layman as the author, the University of
+Idaho, the AI4RA project, and National Science Foundation award 2427549.
+
+------------------------------------------------------------------------
+Data
+
+The data come from the Higher Education Research and Development (HERD)
+Survey, conducted by the National Center for Science and Engineering
+Statistics (NCSES) at the U.S. National Science Foundation. The source
+files are public, institution-level microdata published by NCSES:
+https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development
+
+HERD Explorer reshapes and combines those files but does not change the
+reported values. NCSES is not responsible for this project, and errors in
+the reshaping are this project's own. Report them at
+https://github.com/nate-layman/herd-explorer/issues
+
+------------------------------------------------------------------------
+Third-party software
+
+HERD Explorer loads open source libraries in the browser from public CDNs.
+Each remains under its own license and copyright; none is modified or
+redistributed by this project. The list is kept current in README.md under
+"Built with".

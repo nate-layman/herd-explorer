@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below. If you use the data, also cite the NCSES HERD Survey."
+title: "HERD Explorer"
+type: software
+license: Apache-2.0
+repository-code: "https://github.com/nate-layman/herd-explorer"
+authors:
+  - family-names: Layman
+    given-names: Nathan
+    affiliation: "University of Idaho"
+abstract: >-
+  Browser-based explorer for the NCSES Higher Education Research and Development (HERD) Survey.
+  Compare institutions, states and groups over time, roll up to national figures, pivot the
+  institution-level data any way you like, project trends with a hierarchical model, and
+  download the combined data. Runs entirely in the browser on GitHub Pages.
+references:
+  - type: data
+    title: "Higher Education Research and Development (HERD) Survey, institution-level microdata"
+    authors:
+      - name: "National Center for Science and Engineering Statistics, U.S. National Science Foundation"
+    url: "https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development"

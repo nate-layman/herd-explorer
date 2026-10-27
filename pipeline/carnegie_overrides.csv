@@ -1,0 +1,54 @@
+inst_id,herd_name,carnegie_unitid,sector_override,note
+029977,Johns Hopkins University,162928,,HERD reports without an IPEDS ID (includes Applied Physics Laboratory)
+008802,Ohio State University,204796,,Main campus
+102092,University of Maryland,163286,,Joint College Park and Baltimore reporting unit; mapped to College Park
+003632,"Texas A&M University, College Station",228723,,
+353086,Vanderbilt University and Vanderbilt University Medical Center,221999,,
+003329,"Pennsylvania State University, The, University Park and Hershey Medical Center",495767,,Penn State consolidated IPEDS reporting under 495767
+004508,University of Colorado Anschutz Medical Campus,126562,,University of Colorado Denver/Anschutz Medical Campus
+008805,University of Cincinnati,201885,,Main campus
+102130,"University of Nebraska, Lincoln and Medical Center",181464,,Joint reporting unit; mapped to Lincoln
+022635,"Scripps Research Institute, The",,Independent research institute,Not in Carnegie 2021
+008718,University of Connecticut,129020,,
+330009,"State University of New York, University at Albany, College of Nanoscale Science and Engineering",196060,,Part of SUNY at Albany
+003210,Oregon State University,209542,,
+002230,Woods Hole Oceanographic Institution,,Independent research institute,Not in Carnegie 2021
+002589,University of New Hampshire,183044,,Main campus
+002620,University of Medicine and Dentistry of New Jersey,,Special focus: medical,Dissolved 2013; not in Carnegie 2021
+102059,University of Mississippi,176017,,
+101520,Cold Spring Harbor Laboratory,,Independent research institute,Not in Carnegie 2021
+208828,William & Mary,231624,,
+032064,Texas A&M Health Science Center,,Special focus: medical,Merged into Texas A&M; not in Carnegie 2021
+102013,Van Andel Institute,,Independent research institute,Not in Carnegie 2021
+001311,"University of California, Office of the President",,System office,
+001579,Georgia Health Sciences University,482149,,Now Augusta University
+007785,"University of Tennessee, The, Institute of Agriculture",221759,,Part of the University of Tennessee-Knoxville
+008803,Ohio University,204857,,Main campus
+233046,Western Michigan University and Homer Stryker M.D. School of Medicine,172699,,Joint reporting unit; mapped to Western Michigan University
+008799,Kent State University,203517,,Kent campus
+019039,University of Maryland Center for Environmental Science,,Independent research institute,Not in Carnegie 2021
+001479,Embry-Riddle Aeronautical University,133553,,Daytona Beach campus
+008907,Desert Research Institute,,Independent research institute,Not in Carnegie 2021
+102091,"City University of New York, Graduate School of Public Health and Health Policy",190576,,Mapped to CUNY Graduate School and University Center
+008800,Miami University,204024,,Oxford campus
+012310,University of Akron,200800,,Main campus
+002796,Polytechnic Institute of New York University,193900,,Merged into New York University
+102040,University of Nebraska central administration,,System office,
+006740,University of Colorado Denver,126562,,University of Colorado Denver/Anschutz Medical Campus
+009167,Wright State University,206604,,Main campus
+102060,"City University of New York, The, Advanced Science Research Center",190576,,Mapped to CUNY Graduate School and University Center
+008796,Bowling Green State University,201441,,Main campus
+009016,University of South Florida St. Petersburg,137351,,USF consolidated its campuses in 2020
+102037,"University of Hawaii, system office",,System office,
+001657,Midwestern University,143853,,Downers Grove
+330010,Southern University Agricultural Research and Extension Center,160621,,Mapped to Southern University and A&M College
+001827,"Purdue University, Calumet Campus",490805,,Now Purdue University Northwest
+003333,"Pennsylvania State University, The, Erie",495767,,Penn State consolidated IPEDS reporting under 495767
+101662,United States Army War College,999909,,
+330037,"Texas A&M University, Galveston",228723,,Branch campus of Texas A&M
+102041,"University of Oklahoma, The, Tulsa",207500,,Branch campus of the University of Oklahoma
+006814,"Pennsylvania State University, The, Harrisburg",495767,,Penn State consolidated IPEDS reporting under 495767
+101708,"Memorial Sloan-Kettering Cancer Center, Louis V. Gerstner Jr. Graduate School of Biomedical Sciences",,Independent research institute,Not in Carnegie 2021
+330051,University of Massachusetts Central Office,,System office,
+330049,Skidaway Institute of Oceanography,,Independent research institute,Not in Carnegie 2021
+330050,"City University of New York, The, System Office",,System office,

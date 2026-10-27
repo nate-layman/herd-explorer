@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: HERD Survey questions for NCSES
+    url: https://ncses.nsf.gov/surveys/higher-education-research-development
+    about: Questions about how the survey itself is designed or collected belong with NCSES.
