@@ -139,6 +139,7 @@ fit_growth <- function(d) {
   same <- c(FALSE, head(d$inst, -1) == d$inst[-1])
   g <- d[same & d$year - prev_year == 1, ]
   g$dy <- (d$y - prev)[same & d$year - prev_year == 1]
+  g$lag_y <- prev[same & d$year - prev_year == 1]
   g$fyear <- factor(g$year)
   g$fys <- factor(paste(g$year, g$model_sector))
   g$inst <- droplevels(g$inst); g$state <- droplevels(g$state)
@@ -147,11 +148,16 @@ fit_growth <- function(d) {
   invisible(capture.output(vc <- gam.vcomp(m, rescale = FALSE)))
   sd_of <- function(term) { r <- grep(term, rownames(vc), fixed = TRUE); if (length(r)) vc[r[1], "std.dev"] else 0 }
   m$sd_year <- sd_of("s(fyear)"); m$sd_ys <- sd_of("s(fys)"); m$sd_resid <- sqrt(m$sig2)
+  # Small institutions' budgets swing far more than large ones', so the year-to-year
+  # noise is a smooth function of size: E[log|e|] = log(sigma) - 0.635 for normal e.
+  g$log_abs_resid <- log(abs(residuals(m)) + 1e-6)
+  m$noise <- gam(log_abs_resid ~ s(lag_y, k = 6), data = g, method = "REML")
+  m$noise_sd <- function(level) exp(predict(m$noise, newdata = data.frame(lag_y = level)) + 0.635)
   m$train <- d; m$growth_data <- g
   m
 }
 
-simulate_growth <- function(m, h, draws) {
+simulate_growth <- function(m, h, draws, widen = 1) {
   d <- m$train; g <- m$growth_data
   last_year <- max(d$year)
   last <- d[!duplicated(d$inst, fromLast = TRUE), ]
@@ -167,22 +173,25 @@ simulate_growth <- function(m, h, draws) {
   sectors <- as.integer(nd$model_sector)
   logv <- matrix(0, nrow(nd) * h, draws)
   level <- matrix(last$y, nrow(nd), draws)
+  noise_sd <- widen * m$noise_sd(last$y)                        # per institution, from its last observed size
   for (k in seq_len(h)) {
-    year_shock <- matrix(rnorm(draws, 0, m$sd_year), nrow(nd), draws, byrow = TRUE)
-    ys <- matrix(rnorm(nlevels(nd$model_sector) * draws, 0, m$sd_ys), nlevels(nd$model_sector), draws)[sectors, , drop = FALSE]
-    level <- level + drift + year_shock + ys + matrix(rnorm(nrow(nd) * draws, 0, m$sd_resid), nrow(nd), draws)
+    year_shock <- matrix(rnorm(draws, 0, widen * m$sd_year), nrow(nd), draws, byrow = TRUE)
+    ys <- matrix(rnorm(nlevels(nd$model_sector) * draws, 0, widen * m$sd_ys), nlevels(nd$model_sector), draws)[sectors, , drop = FALSE]
+    level <- level + drift + year_shock + ys + matrix(rnorm(nrow(nd) * draws, 0, noise_sd), nrow(nd), draws)
     logv[seq(k, by = h, length.out = nrow(nd)), ] <- level
   }
   out <- data.frame(inst_id = rep(nd$inst_id, each = h), year = rep(last_year + seq_len(h), times = nrow(nd)))
   list(nd = out, logv = logv)
 }
 
-score <- function(sim, actual, label, cutoff) {
+score <- function(sim, actual, label, cutoff, sizes) {
   key <- paste(sim$nd$inst_id, sim$nd$year)
   a <- actual[match(key, paste(actual$inst_id, actual$year)), "y"]
   ok <- !is.na(a)
   q <- t(apply(sim$logv[ok, , drop = FALSE], 1, quantile, c(0.05, 0.1, 0.9, 0.95)))
-  data.frame(model = label, cutoff = cutoff, horizon = sim$nd$year[ok] - cutoff,
+  size <- cut(exp(sizes[match(sim$nd$inst_id[ok], names(sizes))]) * 1000, c(0, 5e6, 1e8, Inf),
+              labels = c("Under $5M", "$5M to $100M", "Over $100M"))
+  data.frame(model = label, cutoff = cutoff, horizon = sim$nd$year[ok] - cutoff, size = size,
              crps = crps_sample(a[ok], sim$logv[ok, , drop = FALSE]),
              in80 = a[ok] >= q[, 2] & a[ok] <= q[, 3],
              in90 = a[ok] >= q[, 1] & a[ok] <= q[, 4])
@@ -199,20 +208,38 @@ cutoffs <- 2018:2021
 labels <- c(hgam = "Hierarchical GAM on levels (GP smooths, AR(1))",
             growth = "Hierarchical growth (pooled drift, shared year shocks)",
             naive = "Naive: own average growth")
-bt <- list()
+widen_grid <- c(1, 1.15, 1.3, 1.5)
+bt <- list(); bt_widen <- list()
 for (cut in cutoffs) {
   train <- d_all[d_all$year <= cut, ]
   test <- d_all[d_all$year > cut & d_all$year <= cut + 3, ]
-  bt[[length(bt) + 1]] <- score(simulate(fit_model(train, gp_range), 3, 500), test, labels[["hgam"]], cut)
-  bt[[length(bt) + 1]] <- score(simulate_growth(fit_growth(train), 3, 500), test, labels[["growth"]], cut)
-  bt[[length(bt) + 1]] <- score(naive(train, 3, 500), test, labels[["naive"]], cut)
+  last_train <- train[!duplicated(train$inst_id, fromLast = TRUE), ]
+  sizes <- setNames(last_train$y, last_train$inst_id)
+  bt[[length(bt) + 1]] <- score(simulate(fit_model(train, gp_range), 3, 500), test, labels[["hgam"]], cut, sizes)
+  mg <- fit_growth(train)
+  for (w in widen_grid) {
+    s <- score(simulate_growth(mg, 3, 500, w), test, labels[["growth"]], cut, sizes)
+    s$widen <- w
+    bt_widen[[length(bt_widen) + 1]] <- s
+  }
+  bt[[length(bt) + 1]] <- score(naive(train, 3, 500), test, labels[["naive"]], cut, sizes)
   message("backtest cutoff ", cut, " done")
 }
-bt <- do.call(rbind, bt)
+# Pick the noise multiplier whose coverage is closest to nominal, then keep only that run
+bt_widen <- do.call(rbind, bt_widen)
+cal <- aggregate(cbind(crps, in80, in90) ~ widen, data = bt_widen, FUN = mean)
+cal$miss <- abs(cal$in80 - 0.8) + abs(cal$in90 - 0.9)
+print(cal, row.names = FALSE)
+widen <- cal$widen[which.min(cal$miss)]
+message("interval widening factor: ", widen)
+bt <- rbind(do.call(rbind, bt), bt_widen[bt_widen$widen == widen, setdiff(names(bt_widen), "widen")])
 bt_summary <- summarise_bt(bt)
 print(bt_summary, row.names = FALSE)
 overall <- aggregate(cbind(crps, in80, in90) ~ model, data = bt, FUN = mean)
 print(overall[order(overall$crps), ], row.names = FALSE)
+by_size <- aggregate(cbind(crps, in80, in90) ~ model + size, data = bt, FUN = mean)
+by_size <- by_size[order(by_size$size, by_size$crps), ]
+print(by_size, row.names = FALSE)
 modeled <- overall[overall$model != labels[["naive"]], ]
 chosen <- names(labels)[match(modeled$model[which.min(modeled$crps)], labels)]
 message("production model: ", labels[[chosen]])
@@ -222,7 +249,7 @@ info <- list()
 for (id in measures) {
   d <- load_measure(id)
   m <- if (chosen == "growth") fit_growth(d) else fit_model(d, gp_range)
-  sim <- if (chosen == "growth") simulate_growth(m, horizon, n_draws) else simulate(m, horizon, n_draws)
+  sim <- if (chosen == "growth") simulate_growth(m, horizon, n_draws, widen) else simulate(m, horizon, n_draws)
   long <- data.frame(
     inst_id = rep(sim$nd$inst_id, times = n_draws),
     year = rep(sim$nd$year, times = n_draws),
@@ -237,6 +264,7 @@ for (id in measures) {
                            sd_year_shock = if (chosen == "growth") round(m$sd_year, 4) else NA,
                            sd_year_sector_shock = if (chosen == "growth") round(m$sd_ys, 4) else NA,
                            sd_residual_log = round(if (chosen == "growth") m$sd_resid else m$resid_sd, 4),
+                           interval_widening = if (chosen == "growth") widen else 1,
                            first_projected_year = max(d$year) + 1, last_projected_year = max(d$year) + horizon,
                            draws = n_draws, fitted_on = as.character(Sys.Date()))
   message(sprintf("%-36s %4d institutions projected", id, length(unique(sim$nd$inst_id))))
@@ -250,4 +278,6 @@ write_parquet <- function(df, name) {
 write_parquet(do.call(rbind, info), "model_info.parquet")
 write_parquet(bt_summary, "backtest.parquet")
 write_parquet(overall, "backtest_overall.parquet")
+write_parquet(by_size, "backtest_by_size.parquet")
+write_parquet(cal, "backtest_calibration.parquet")
 for (f in list.files(out_dir, full.names = TRUE)) message(sprintf("wrote projections/%-40s %6.1f MB", basename(f), file.size(f) / 1e6))

@@ -47,18 +47,24 @@ The site is a fast JavaScript front end. R runs offline only: mgcv projection fi
 
 ## Projections
 
-Default model for every chart: a hierarchical GAM with partial pooling across institutions.
+Chosen by backtest (model/fit.R; rolling cutoffs 2018-2021, 1-3 years ahead, CRPS on the log scale). Three candidates:
+
+| Model | CRPS | 80% band covers | 90% band covers |
+|---|---|---|---|
+| Hierarchical growth (used) | 0.205 | 83% | 90% |
+| Naive: own average growth | 0.240 | 66% | 75% |
+| Hierarchical GAM on levels (GP sector smooths, AR(1)) | 0.255 | 72% | 80% |
+
+The GAM on levels (first proposal) pulled institutions back toward a trend line; university R&D behaves close to a random walk with drift, so the production model pools growth rates instead and anchors at the last observed value:
 
 ```r
-mgcv::bam(log(value) ~ s(year, k = 8) + s(inst, bs = "re") + s(inst, year_c, bs = "re"),
-          rho = rho_hat, AR.start = first_year, method = "fREML", discrete = TRUE)
+bam(dlog ~ sector + s(state, bs = "re") + s(inst, bs = "re") + s(fyear, bs = "re") + s(fyear_x_sector, bs = "re"))
 ```
 
-- Shared smooth trend for the group in view, random intercept and slope per institution, AR(1) residuals.
-- Tweedie family on raw dollars for series with zeros.
-- Projection horizon 3 to 5 years, intervals from posterior simulation plus residual variance.
-- Rolling-origin backtest against simpler models (each institution alone, constant growth, damped trend). Intervals are widened if their observed coverage falls short. Results are published on the methods page.
-- Standard views are fit offline in native R and shipped as static files. Custom slices refit in the browser with webR, which ships mgcv.
+- Shared year and year-by-sector shocks are simulated for future years, so group totals carry shared uncertainty.
+- Year-to-year noise is a smooth function of institution size (`gam(log|resid| ~ s(lag_y))`, a two-step location-scale model). Without it, bands were far too wide for large institutions and too narrow for small ones.
+- Intervals are widened by a factor chosen in the backtest (1.3) so coverage matches nominal in every size group.
+- 200 draws per institution and year, FY 2025-2029, nine headline measures, stored as Parquet. The site sums draws within any group before taking percentiles.
 - **Disclaimer on every projection.** Any chart showing a projection carries a short note beside it: "Projection: a best guess from past trends, not a forecast. It may not reflect what actually happens. How projections are made." The link goes to the methods page, which explains the model in plain language, shows backtest results, and lists what the model cannot see (policy changes, agency budgets, survey revisions, an institution's own plans).
 
 ## Ask (AI questions)
@@ -66,7 +72,7 @@ mgcv::bam(log(value) ~ s(year, k = 8) + s(inst, bs = "re") + s(inst, year_c, bs 
 - One key box, routed by prefix, as in Promptulus: `mr2_` to MindRouter through the lakehouse proxy, `sk-ant-` to Claude, other `sk-` to OpenAI, anything else to Gemini.
 - A `?key=` URL parameter is read once and stripped from the address bar. Keys live in sessionStorage only.
 - The model returns SQL and a JSON chart spec. SQL runs read-only against the local DuckDB-WASM tables; chart specs are validated before rendering. No eval.
-- The proxy allowlists origins one at a time. `https://nate-layman.github.io` must be added (raise an issue in mindrouter-365; do not edit that repo).
+- The proxy allowlists origins one at a time. `https://nate-layman.github.io` is already allowed (preflight checked 2026-10-27).
 
 ## Phases
 

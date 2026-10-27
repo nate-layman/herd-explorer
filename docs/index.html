@@ -35,9 +35,11 @@
           <option value="share">Share of national total</option>
         </select>
       </label>
+      <label class="inline"><span><input type="checkbox" id="project" /> Show projection to FY 2029</span></label>
     </div>
 
     <div id="trend" class="chart"><p class="status">Loading the database in your browser&hellip;</p></div>
+    <p id="proj-note" class="chart-note projection-note" hidden></p>
     <p id="trend-note" class="chart-note"></p>
 
     <h2>Workload up, resources down</h2>
@@ -55,6 +57,7 @@
     import { query, lit } from './js/db.js';
     import { plotly, PALETTE, OTHER, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
+    import { hasProjection, projectionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
     renderLayout('index.html');
 
@@ -76,12 +79,14 @@
         GROUP BY ALL ORDER BY grp, year`);
 
       // More groups than palette colors: keep the 8 largest by latest year, fold the rest into "All other"
+      let top = null;
+      const otherLabel = split === 'state' ? 'All other states' : 'All other';
       if (new Set(rows.map(r => r.grp)).size > 8) {
         const last = Math.max(...rows.map(r => r.year));
-        const top = rows.filter(r => r.year === last).sort((a, b) => b.value - a.value).slice(0, 8).map(r => r.grp);
+        top = rows.filter(r => r.year === last).sort((a, b) => b.value - a.value).slice(0, 8).map(r => r.grp);
         const folded = new Map();
         for (const r of rows) {
-          const g = top.includes(r.grp) ? r.grp : (split === 'state' ? 'All other states' : 'All other');
+          const g = top.includes(r.grp) ? r.grp : otherLabel;
           const k = `${g}|${r.year}`;
           folded.set(k, { grp: g, year: r.year, value: (folded.get(k)?.value ?? 0) + r.value });
         }
@@ -107,6 +112,28 @@
                  line: { color, width: 2.5 }, marker: { size: 7, color },
                  hovertemplate: mode === 'value' ? '%{text}' : (mode === 'index' ? '%{y:.0f} (%{text})' : '%{y:.1f}% (%{text})') };
       });
+
+      // Projection bands, summed over the same groups (not available for shares of a total)
+      const canProject = mode !== 'share' && await hasProjection(id);
+      $('project').disabled = !canProject;
+      $('project').parentElement.title = canProject ? '' :
+        (mode === 'share' ? 'Projections are not shown for shares.' : 'Projections are available for total R&D, the funding sources and NIH/HHS, NSF and DOD.');
+      const showProj = $('project').checked && canProject;
+      if (showProj) {
+        const grpSql = top ? `CASE WHEN ${groupExpr} IN (${top.map(lit).join(',')}) THEN ${groupExpr} ELSE ${lit(otherLabel)} END` : groupExpr;
+        const bands = await projectionBands(id, `SELECT inst_id, ${grpSql} AS grp FROM institution_latest i`);
+        groups.forEach((g, k) => {
+          const pts = rows.filter(r => r.grp === g).sort((a, b) => a.year - b.year);
+          const b = bands.filter(x => x.grp === g);
+          if (!pts.length || !b.length) return;
+          const base = pts[0].value;
+          const scaleP = v => mode === 'index' ? 100 * v / base : (m.unit === 'thousands_usd' ? v * 1000 : v);
+          const color = g.startsWith('All other') || g === 'Unknown' ? OTHER : PALETTE[k % PALETTE.length];
+          traces.push(...bandTraces(b, pts[pts.length - 1], color, scaleP, g));
+        });
+      }
+      $('proj-note').hidden = !showProj;
+      $('proj-note').innerHTML = `${DISCLAIMER_SHORT} Shaded bands show the 80% and 90% ranges. <a href="data.html#methods">How projections are made</a>.`;
 
       const yTitle = mode === 'index' ? 'Index, FY 2012 = 100' : mode === 'share' ? 'Percent of national total' : unitAxis(m.unit);
       const Plotly = await plotly();
@@ -147,7 +174,7 @@
     }
 
     await fillMeasureSelect($('measure'));
-    for (const id of ['measure', 'split', 'mode']) $(id).addEventListener('change', drawTrend);
+    for (const id of ['measure', 'split', 'mode', 'project']) $(id).addEventListener('change', drawTrend);
     await Promise.all([drawTrend(), drawWorkload()]);
   </script>
 </body>
