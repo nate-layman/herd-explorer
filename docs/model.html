@@ -75,7 +75,6 @@
       across consecutive reported years). Institution \(i\) has type \(s[i]\) (2021 Carnegie) and state \(k[i]\).</p>
 
     <h3>Model</h3>
-    <p>Written in the usual hierarchical notation, outcome first, then each level:</p>
     $$\begin{aligned}
       g_{it} &\sim \mathcal{N}\!\left(\eta_{it},\ \sigma(y_{i,t-1})\right) \\
       \eta_{it} &= \mu_{s[i]} + a_{k[i]} + u_i + \gamma_t + \delta_{t,s[i]} \\
@@ -95,19 +94,12 @@
       <dt>\(f\)</dt><dd>smooth function of last year's log size (thin-plate spline, 6 basis functions)</dd>
     </dl>
 
-    <h3>Estimation</h3>
-    <p>The model is fit with mgcv by restricted maximum likelihood (REML), which estimates the standard deviations
-      \(\sigma_a, \sigma_u, \sigma_\gamma, \sigma_\delta\) together with the coefficients
-      \(\beta = (\mu, a, u, \gamma, \delta)\). The coefficients' uncertainty is approximately normal,
-      \(\beta \sim \mathcal{N}(\hat\beta, V_\beta)\), where \(V_\beta\) is mgcv's unconditional covariance, which also accounts
-      for uncertainty in the estimated standard deviations. Projections draw from this distribution.</p>
-    <p>The noise function is fit in a second step on the residuals \(\hat\varepsilon_{it}\). For normal errors
-      \(\mathbb{E}\left[\log|\varepsilon|\right] = \log\sigma - \tfrac{1}{2}(\gamma_E + \log 2) \approx \log\sigma - 0.635\), so</p>
-    $$\log\left|\hat\varepsilon_{it}\right| = f(y_{i,t-1}) - 0.635 + \nu_{it}, \qquad \hat\sigma(y) = \exp\!\left(\hat f(y)\right)$$
+    <p>Fit by REML in mgcv, giving coefficients \(\hat\beta\) (all of \(\mu, a, u\)) with covariance \(V_\beta\).
+      \(f\) is fit in a second step on the absolute residuals.</p>
 
     <h3>Projection</h3>
-    <p>From the last observed year \(T = 2024\), for draws \(m = 1, \dots, 200\) and horizons \(h = 1, \dots, 5\), with the
-      widening factor \(c = 1.3\) chosen by backtest:</p>
+    <p>From \(T = 2024\), 200 draws \(m\), horizons \(h = 1, \dots, 5\), with every random term widened by \(c = 1.3\)
+      (chosen by backtest):</p>
     $$\begin{aligned}
       \beta^{(m)} &\sim \mathcal{N}\!\left(\hat\beta,\ V_\beta\right) \\
       \gamma^{(m)}_{T+j} &\sim \mathcal{N}\!\left(0,\ c\,\hat\sigma_\gamma\right) \\
@@ -117,20 +109,14 @@
         + \gamma^{(m)}_{T+j} + \delta^{(m)}_{T+j,s[i]} + \varepsilon^{(m)}_{i,T+j}\right) \\
       V^{(m)}_{i,T+h} &= \exp\!\left(y^{(m)}_{i,T+h}\right)
     \end{aligned}$$
-    <p>A group \(G\) (a type, a state, the nation, a set of institutions) is projected by summing within each draw, with
-      institutions the model did not project held at their last value:</p>
+    <p>Groups are summed within each draw, with unmodeled institutions held at their last value:</p>
     $$V^{(m)}_{G,T+h} = \sum_{i \in G,\ \text{modeled}} V^{(m)}_{i,T+h} + \sum_{i \in G,\ \text{not modeled}} V_{iT}$$
-    <p>The shaded ranges are the 10th to 90th and 5th to 95th percentiles of \(V^{(m)}_{G,T+h}\) across draws. Because every
-      institution in a draw shares the same \(\gamma^{(m)}\), \(\delta^{(m)}\) and \(\beta^{(m)}\), a group's range carries the
-      uncertainty its members share.</p>
+    <p>The shaded ranges are the 10th to 90th and 5th to 95th percentiles across draws.</p>
 
     <h3>Scoring</h3>
-    <p>Each backtest projection is scored with the continuous ranked probability score on the log scale, estimated from the
-      draws:</p>
+    <p>Backtests are scored with the continuous ranked probability score on the log scale:</p>
     $$\mathrm{CRPS}(F, y) = \mathbb{E}_F\left|X - y\right| - \tfrac{1}{2}\,\mathbb{E}_F\left|X - X'\right|$$
-    <p>where \(X\) and \(X'\) are independent draws from the projection \(F\) and \(y\) is what actually happened. Lower is
-      better. It equals the absolute error when the projection is a single number, and rewards ranges that are both narrow
-      and right.</p>
+    <p>where \(X, X'\) are draws from the projection \(F\) and \(y\) is the observed value. Lower is better.</p>
     </section>
 
     <h2>The model as code</h2>
