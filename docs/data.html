@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HERD Explorer: Data and sources</title>
+  <meta name="description" content="Where HERD Explorer's data come from, how they were combined, what each measure means, and downloads." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <main>
+    <h1>Data &amp; sources</h1>
+    <p class="lede">Every number on this site comes from public sources listed below. HERD Explorer reshapes and combines
+      them but never changes a reported value. If something looks wrong, please
+      <a id="report" href="#">report a data error</a>.</p>
+
+    <h2>Download the data</h2>
+    <div class="downloads">
+      <a href="data/downloads/herd_explorer_wide.xlsx">Excel (XLSX), one row per institution and year</a>
+      <a href="data/downloads/herd_explorer_wide.csv">CSV, one row per institution and year</a>
+      <a href="data/downloads/herd_explorer_survey_values.csv.zip">Every survey value, long format (CSV, zipped, 25 MB)</a>
+      <a href="data/herd.duckdb">Full database (DuckDB, 32 MB)</a>
+      <a href="data/metrics.parquet">Measures (Parquet)</a>
+      <a href="data/facts.parquet">Survey values (Parquet)</a>
+    </div>
+    <p class="chart-note">Dollar values are in thousands of nominal dollars. The Excel file includes a README, the measure
+      definitions and the source list. In the Pivot page you can also export any view you build.</p>
+
+    <h2>Sources</h2>
+    <table class="data" id="sources"><tr><td class="status">Loading&hellip;</td></tr></table>
+
+    <h2>How the data were put together</h2>
+    <ul>
+      <li><strong>Years.</strong> FY 2012 to FY 2024. All of these years use the same survey design, introduced in FY 2010,
+        and include the short-form survey for institutions with less than $1 million in R&amp;D, so national totals are complete.</li>
+      <li><strong>Checked against NCSES.</strong> Each build compares 195 national totals with the tables NCSES publishes
+        (<a href="https://ncses.nsf.gov/pubs/nsf26304">NSF 26-304</a>, Tables 2 and 12). All match exactly; the build stops if any do not.</li>
+      <li><strong>Two survey forms.</strong> Institutions with $1 million or more in R&amp;D answer the standard form; smaller
+        ones answer a short form with fewer questions. Measures available only on the standard form are labeled that way
+        below, and their national totals leave out short-form institutions (about 0.1 percent of R&amp;D).</li>
+      <li><strong>Not released by institution.</strong> NCSES does not publish, for individual institutions, how institution
+        funds split into institutionally financed research, cost sharing and unrecovered indirect costs, or how much indirect
+        cost was recovered. Those appear on this site only as national totals from the published tables.</li>
+      <li><strong>Personnel</strong> counts are released from FY 2022 onward.</li>
+      <li><strong>Institution type</strong> comes from the 2021 Carnegie Classification, held fixed for every year so a group
+        means the same institutions throughout. HERD reporting units without a usable IPEDS ID (combined campuses, system
+        offices, research institutes) are matched by a <a id="crosswalk" href="#">hand-checked crosswalk</a>. Seven independent
+        research institutes and three system offices, which Carnegie does not classify, are labeled by HERD Explorer.</li>
+      <li><strong>Imputed values.</strong> NCSES imputes some values for nonresponse; the survey-values download keeps NCSES's
+        status code (i = imputed, n = not available) for every value.</li>
+      <li><strong>Dollars</strong> are nominal (not adjusted for inflation).</li>
+    </ul>
+
+    <h2>Measures</h2>
+    <label class="controls" style="display:block">Search <input id="filter" placeholder="e.g. NIH, subawards, life sciences" /></label>
+    <table class="data" id="catalog"><tr><td class="status">Loading&hellip;</td></tr></table>
+
+    <h2>Disclaimer</h2>
+    <p id="disclaimer"></p>
+  </main>
+
+  <script type="module">
+    import { renderLayout, REPO, REPORT_ERROR, DISCLAIMER } from './js/layout.js';
+    import { query } from './js/db.js';
+
+    renderLayout('data.html');
+    const $ = id => document.getElementById(id);
+    $('report').href = REPORT_ERROR;
+    $('crosswalk').href = `${REPO}/blob/main/pipeline/carnegie_overrides.csv`;
+    $('disclaimer').textContent = DISCLAIMER;
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    const sources = await query('SELECT * FROM sources');
+    $('sources').innerHTML = '<tr><th>Used for</th><th>Publisher</th><th>Title</th><th>Downloaded</th></tr>' +
+      sources.map(s => `<tr><td>${esc(s.table_name)}</td><td>${esc(s.publisher)}</td>
+        <td><a href="${esc(s.url)}">${esc(s.title)}</a></td><td>${esc(s.built_on)}</td></tr>`).join('');
+
+    const catalog = await query('SELECT * FROM measure_catalog ORDER BY category, label');
+    function drawCatalog() {
+      const f = $('filter').value.toLowerCase();
+      const rows = catalog.filter(m => !f || `${m.category} ${m.label} ${m.definition}`.toLowerCase().includes(f));
+      $('catalog').innerHTML = '<tr><th>Category</th><th>Measure</th><th>Definition</th><th>Covers</th></tr>' +
+        rows.map(m => `<tr><td>${esc(m.category)}</td><td>${esc(m.label)}</td><td>${esc(m.definition)}</td><td>${esc(m.coverage)}</td></tr>`).join('');
+    }
+    $('filter').addEventListener('input', drawCatalog);
+    drawCatalog();
+  </script>
+</body>
+</html>

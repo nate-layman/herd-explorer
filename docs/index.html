@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HERD Explorer: Trends</title>
+  <meta name="description" content="Explore NCSES HERD Survey research and development spending at U.S. colleges and universities, FY 2012 to 2024." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <main>
+    <h1>Trends</h1>
+    <p class="lede">University research and development spending from FY 2012 to FY 2024, nationally or split by group.
+      Pick a measure, then choose how to slice it.</p>
+
+    <div class="controls">
+      <label>Measure <select id="measure"></select></label>
+      <label>Split by
+        <select id="split">
+          <option value="">Nothing (national total)</option>
+          <option value="sector">Institution type (Carnegie 2021)</option>
+          <option value="control">Public or private</option>
+          <option value="state">State (top 8, rest combined)</option>
+          <option value="msi">Minority-serving institution</option>
+          <option value="hbcu">HBCU</option>
+          <option value="medical_school">Has a medical school</option>
+          <option value="land_grant">Land-grant</option>
+        </select>
+      </label>
+      <label>Show as
+        <select id="mode">
+          <option value="value">Amount</option>
+          <option value="index">Index (FY 2012 = 100)</option>
+          <option value="share">Share of national total</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="trend" class="chart"><p class="status">Loading the database in your browser&hellip;</p></div>
+    <p id="trend-note" class="chart-note"></p>
+
+    <h2>Workload up, resources down</h2>
+    <p class="lede">Federal research requirements keep accumulating, while the share of indirect costs universities
+      recover for each dollar of direct research has fallen.</p>
+    <div id="workload" class="chart"></div>
+    <p class="chart-note">Sources: COGR, <a href="https://www.cogr.edu/changes-federal-research-requirements-1991">Changes in Federal
+      Research Requirements Since 1991</a>, Figure 1 (updated Jan. 2025), data labels entered by hand. NCSES, HERD Survey FY 2024
+      data tables (<a href="https://ncses.nsf.gov/pubs/nsf26304">NSF 26-304</a>), Table 12, standard-form institutions.
+      Recovery figures are national only; NCSES does not release them by institution.</p>
+  </main>
+
+  <script type="module">
+    import { renderLayout } from './js/layout.js';
+    import { query, lit } from './js/db.js';
+    import { plotly, PALETTE, OTHER, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
+    import { fillMeasureSelect, measure } from './js/measures.js';
+
+    renderLayout('index.html');
+
+    const $ = id => document.getElementById(id);
+    const SPLIT_LABEL = { msi: ['Minority-serving', 'Not minority-serving'], hbcu: ['HBCU', 'Not an HBCU'],
+                          medical_school: ['Medical school', 'No medical school'], land_grant: ['Land-grant', 'Not land-grant'] };
+
+    async function drawTrend() {
+      const id = $('measure').value, split = $('split').value, mode = $('mode').value;
+      const m = await measure(id);
+      let groupExpr = `'National total'`;
+      if (split === 'sector' || split === 'control' || split === 'state') groupExpr = `coalesce(i.${split}, 'Unknown')`;
+      if (SPLIT_LABEL[split]) groupExpr = `CASE WHEN i.${split} THEN ${lit(SPLIT_LABEL[split][0])} ELSE ${lit(SPLIT_LABEL[split][1])} END`;
+
+      let rows = await query(`
+        SELECT ${groupExpr} AS grp, m.year, sum(m.value) AS value
+        FROM metrics m JOIN institution_latest i USING (inst_id)
+        WHERE m.measure_id = ${lit(id)}
+        GROUP BY ALL ORDER BY grp, year`);
+
+      // States: keep the 8 largest by latest year, fold the rest into "All other states"
+      if (split === 'state') {
+        const last = Math.max(...rows.map(r => r.year));
+        const top = rows.filter(r => r.year === last).sort((a, b) => b.value - a.value).slice(0, 8).map(r => r.grp);
+        const folded = new Map();
+        for (const r of rows) {
+          const g = top.includes(r.grp) ? r.grp : 'All other states';
+          const k = `${g}|${r.year}`;
+          folded.set(k, { grp: g, year: r.year, value: (folded.get(k)?.value ?? 0) + r.value });
+        }
+        rows = [...folded.values()];
+      }
+
+      const totals = new Map();
+      for (const r of rows) totals.set(r.year, (totals.get(r.year) ?? 0) + r.value);
+      const groups = [...new Set(rows.map(r => r.grp))];
+      // Order groups by size in the latest year so colors follow a stable, meaningful order
+      const last = Math.max(...rows.map(r => r.year));
+      groups.sort((a, b) => (rows.find(r => r.grp === b && r.year === last)?.value ?? 0) - (rows.find(r => r.grp === a && r.year === last)?.value ?? 0));
+
+      const traces = groups.map((g, k) => {
+        const pts = rows.filter(r => r.grp === g).sort((a, b) => a.year - b.year);
+        const base = pts[0]?.value;
+        const y = pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null)
+                            : mode === 'share' ? 100 * p.value / totals.get(p.year)
+                            : m.unit === 'thousands_usd' ? p.value * 1000 : p.value);
+        const text = pts.map(p => fmt(p.value, m.unit));
+        const color = g.startsWith('All other') || g === 'Unknown' ? OTHER : PALETTE[k % PALETTE.length];
+        return { x: pts.map(p => p.year), y, text, name: g, type: 'scatter', mode: 'lines+markers',
+                 line: { color, width: 2.5 }, marker: { size: 7, color },
+                 hovertemplate: mode === 'value' ? '%{text}' : (mode === 'index' ? '%{y:.0f} (%{text})' : '%{y:.1f}% (%{text})') };
+      });
+
+      const yTitle = mode === 'index' ? 'Index, FY 2012 = 100' : mode === 'share' ? 'Percent of national total' : unitAxis(m.unit);
+      const Plotly = await plotly();
+      $('trend').innerHTML = '';
+      Plotly.react('trend', traces, {
+        ...BASE_LAYOUT, showlegend: groups.length > 1,
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: yTitle }, tickprefix: mode === 'value' && m.unit === 'thousands_usd' ? '$' : '',
+                 ticksuffix: mode === 'share' ? '%' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
+      }, CONFIG);
+      $('trend-note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
+        `Source: NCSES HERD Survey public microdata, FY 2012-2024. Nominal dollars.` +
+        (split === 'sector' ? ' Institution type from the 2021 Carnegie Classification.' : '');
+    }
+
+    async function drawWorkload() {
+      const rows = await query(`
+        WITH rec AS (
+          SELECT year,
+                 max(value) FILTER (WHERE measure = 'Indirect costs: recovered') /
+                 max(value) FILTER (WHERE measure = 'Direct costs') AS rate
+          FROM national_published WHERE source_table = 'NSF 26-304 Table 12' GROUP BY year)
+        SELECT c.year, c.cumulative_requirements AS reqs, rec.rate
+        FROM cogr_requirements c LEFT JOIN rec USING (year)
+        WHERE c.year >= 2010 ORDER BY c.year`);
+      const Plotly = await plotly();
+      Plotly.newPlot('workload', [
+        { x: rows.map(r => r.year), y: rows.map(r => r.reqs), name: 'Workload up: federal research requirements, cumulative since 1991',
+          type: 'scatter', mode: 'lines+markers', line: { color: PALETTE[0], width: 3 }, marker: { size: 8 } },
+        { x: rows.map(r => r.year), y: rows.map(r => r.rate == null ? null : 100 * r.rate), yaxis: 'y2',
+          name: 'Resources down: indirect costs recovered per $1 of direct costs', type: 'scatter', mode: 'lines+markers',
+          line: { color: PALETTE[1], width: 3 }, marker: { size: 8 }, hovertemplate: '%{y:.1f}¢' },
+      ], {
+        ...BASE_LAYOUT, hovermode: 'x unified', margin: { l: 70, r: 70, t: 20, b: 50 },
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: 'Requirements', font: { color: PALETTE[0] } }, range: [0, 300], dtick: 50 },
+        yaxis2: { overlaying: 'y', side: 'right', showgrid: false, ticksuffix: '¢', range: [19, 24], dtick: 1,
+                  title: { text: 'Recovered per $1 of direct costs', font: { color: PALETTE[1] } } },
+      }, CONFIG);
+    }
+
+    await fillMeasureSelect($('measure'));
+    for (const id of ['measure', 'split', 'mode']) $(id).addEventListener('change', drawTrend);
+    await Promise.all([drawTrend(), drawWorkload()]);
+  </script>
+</body>
+</html>

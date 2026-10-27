@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HERD Explorer: Pivot</title>
+  <meta name="description" content="Pivot NCSES HERD Survey data by institution, year, measure and group, with export." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/site.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@perspective-dev/viewer@5.5.1/dist/css/pro.css" />
+  <style>
+    main { max-width: none; }
+    perspective-viewer { height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pivot</h1>
+    <p class="lede">A pivot table on every measure for every institution and year. Open the settings panel (the gear in
+      the corner) to group by any field, split columns by year, filter, and switch between a table and charts. Use
+      <em>Export</em> in that panel to download the current view as CSV or other formats.</p>
+    <perspective-viewer id="viewer"></perspective-viewer>
+    <p id="status" class="status">Loading the database and the pivot table&hellip;</p>
+    <p class="chart-note">Source: NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars. Dollar values are in
+      thousands. Institution type (sector) from the 2021 Carnegie Classification. Pivot table:
+      <a href="https://github.com/perspective-dev/perspective">Perspective</a> (Apache 2.0).</p>
+  </main>
+
+  <script type="module">
+    import 'https://cdn.jsdelivr.net/npm/@perspective-dev/viewer@5.5.1/dist/cdn/perspective-viewer.js';
+    import 'https://cdn.jsdelivr.net/npm/@perspective-dev/viewer-datagrid@5.5.1/dist/cdn/perspective-viewer-datagrid.js';
+    import 'https://cdn.jsdelivr.net/npm/@perspective-dev/viewer-charts@5.5.1/dist/cdn/perspective-viewer-charts.js';
+    import perspective from 'https://cdn.jsdelivr.net/npm/@perspective-dev/client@5.5.1/dist/cdn/perspective.js';
+    import { renderLayout } from './js/layout.js';
+    import { columns } from './js/db.js';
+
+    renderLayout('pivot.html');
+
+    const data = await columns(`
+      SELECT c.category, c.label AS measure, c.unit, CAST(m.year AS VARCHAR) AS year, i.name AS institution, i.state, i.sector,
+             i.control AS "public or private", CASE WHEN i.msi THEN 'Yes' ELSE 'No' END AS "minority-serving",
+             CASE WHEN i.medical_school THEN 'Yes' ELSE 'No' END AS "medical school", m.value
+      FROM metrics m
+      JOIN measure_catalog c ON c.id = m.measure_id
+      JOIN institution_latest i USING (inst_id)`);
+
+    const worker = await perspective.worker();
+    const table = await worker.table(data);
+    const viewer = document.getElementById('viewer');
+    await viewer.load(table);
+    // Start on a useful view: total R&D by sector, one column per year
+    await viewer.restore({
+      plugin: 'Datagrid',
+      group_by: ['sector'],
+      split_by: ['year'],
+      columns: ['value'],
+      filter: [['measure', '==', 'All R&D']],
+      aggregates: { value: 'sum' },
+      sort: [['value', 'desc']],
+      settings: true,
+    });
+    document.getElementById('status').remove();
+  </script>
+</body>
+</html>

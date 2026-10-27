@@ -33,7 +33,8 @@ sources <- c(`01.g` = "All R&D", `01.a` = "Federal government", `01.b` = "State 
              `01.f` = "All other sources")
 for (q in names(sources)) {
   add(paste0("source_", slug(sources[[q]])), sources[[q]], "Source of funds", "thousands_usd", both,
-      sprintf("R&D expenditures funded by: %s. Survey question 1, row %s.", sources[[q]], sub("01.", "", q, fixed = TRUE)),
+      if (q == "01.g") "Total R&D expenditures from all sources. Survey question 1, row g."
+      else sprintf("R&D expenditures funded by %s. Survey question 1, row %s.", tolower(sources[[q]]), sub("01.", "", q, fixed = TRUE)),
       cell(sprintf("question_no = '%s'", q)))
 }
 

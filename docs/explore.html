@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HERD Explorer: Explore</title>
+  <meta name="description" content="Drag-and-drop charts on NCSES HERD Survey data, one row per institution and year." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/site.css" />
+  <style>
+    main { max-width: none; }
+    #gw { min-height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Explore</h1>
+    <p class="lede">Build any chart by dragging fields. Each row is one institution in one fiscal year; every measure is a
+      column, in thousands of dollars (personnel in people). Try <em>year</em> on the x-axis, a measure on the y-axis,
+      and <em>sector</em> or <em>state</em> on color.</p>
+    <div id="gw"><p class="status" style="padding:1rem">Loading the database and the chart builder&hellip;</p></div>
+    <p class="chart-note">Source: NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars. Institution type
+      (sector) from the 2021 Carnegie Classification. Measures marked "standard form" cover institutions with $1 million or
+      more in R&amp;D; see <a href="data.html">Data &amp; sources</a> for every definition.
+      Chart builder: <a href="https://github.com/Kanaries/graphic-walker">Graphic Walker</a> (Apache 2.0).</p>
+  </main>
+
+  <script type="module">
+    import { renderLayout } from './js/layout.js';
+    import { query } from './js/db.js';
+    import React from 'https://esm.sh/react@19.1.0';
+    import { createRoot } from 'https://esm.sh/react-dom@19.1.0/client';
+    import { GraphicWalker } from 'https://esm.sh/@kanaries/graphic-walker@0.5.3?deps=react@19.1.0,react-dom@19.1.0';
+
+    renderLayout('explore.html');
+
+    const catalog = await query('SELECT id, label, category, unit, coverage FROM measure_catalog ORDER BY category, label');
+    // Column names people will read in the field list
+    const colName = m => `${m.category}: ${m.label}`;
+    const pivotCols = catalog.map(m =>
+      `sum(value) FILTER (WHERE measure_id = '${m.id}') AS "${colName(m).replaceAll('"', '""')}"`).join(',\n');
+
+    const rows = await query(`
+      SELECT m.year, i.name AS institution, i.state, i.sector, i.control AS "public or private",
+             i.highest_degree AS "highest degree", i.msi AS "minority-serving", i.hbcu, i.medical_school AS "medical school",
+             i.land_grant AS "land-grant", ${pivotCols}
+      FROM metrics m JOIN institution_latest i USING (inst_id)
+      GROUP BY ALL ORDER BY institution, year`);
+
+    const dims = ['year', 'institution', 'state', 'sector', 'public or private', 'highest degree', 'minority-serving', 'hbcu', 'medical school', 'land-grant'];
+    const fields = [
+      ...dims.map(d => ({ fid: d, name: d, semanticType: d === 'year' ? 'ordinal' : 'nominal', analyticType: 'dimension' })),
+      ...catalog.map(m => ({ fid: colName(m), name: colName(m), semanticType: 'quantitative', analyticType: 'measure' })),
+    ];
+    // Booleans read better as words in a chart builder
+    for (const r of rows) for (const d of ['minority-serving', 'hbcu', 'medical school', 'land-grant']) r[d] = r[d] ? 'Yes' : 'No';
+
+    const el = document.getElementById('gw');
+    el.innerHTML = '';
+    createRoot(el).render(React.createElement(GraphicWalker, { data: rows, fields, appearance: 'light' }));
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HERD Explorer: Compare</title>
+  <meta name="description" content="Compare institutions' research and development spending over time using NCSES HERD Survey data." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <main>
+    <h1>Compare institutions</h1>
+    <p class="lede">Add institutions to see their trends side by side. The dashed lines show the median institution in
+      each one's group, for context.</p>
+
+    <div class="controls">
+      <label>Add an institution
+        <input id="search" list="inst-list" placeholder="Start typing a name" autocomplete="off" />
+        <datalist id="inst-list"></datalist>
+      </label>
+      <label>Measure <select id="measure"></select></label>
+      <label>Show as
+        <select id="mode">
+          <option value="value">Amount</option>
+          <option value="index">Index (FY 2012 = 100)</option>
+        </select>
+      </label>
+      <label>Context
+        <select id="context">
+          <option value="sector">Median of each institution's type</option>
+          <option value="none">None</option>
+        </select>
+      </label>
+    </div>
+    <div id="chips" class="chips"></div>
+
+    <div id="chart" class="chart"><p class="status">Loading the database in your browser&hellip;</p></div>
+    <p id="note" class="chart-note"></p>
+  </main>
+
+  <script type="module">
+    import { renderLayout } from './js/layout.js';
+    import { query, lit } from './js/db.js';
+    import { plotly, PALETTE, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
+    import { fillMeasureSelect, measure } from './js/measures.js';
+
+    renderLayout('compare.html');
+    const $ = id => document.getElementById(id);
+
+    const insts = await query(`SELECT inst_id, name, state, sector FROM institution_latest ORDER BY name`);
+    const byLabel = new Map(insts.map(i => [`${i.name} (${i.state})`, i]));
+    $('inst-list').innerHTML = [...byLabel.keys()].map(l => `<option value="${l.replaceAll('"', '&quot;')}"></option>`).join('');
+
+    // Start from the URL (?inst=id,id) or a few examples
+    const params = new URLSearchParams(location.search);
+    let selected = (params.get('inst')?.split(',') ?? [])
+      .filter(id => insts.some(i => i.inst_id === id));
+    if (!selected.length) {
+      selected = insts.filter(i => /^University of Idaho$|^Boise State University$|^Idaho State University$/.test(i.name)).map(i => i.inst_id);
+    }
+
+    await fillMeasureSelect($('measure'), params.get('measure') ?? 'source_all_r_d');
+
+    function renderChips() {
+      $('chips').innerHTML = selected.map((id, k) => {
+        const i = insts.find(x => x.inst_id === id);
+        return `<span class="chip" style="border-color:${PALETTE[k % PALETTE.length]}">${i.name}
+          <button aria-label="Remove ${i.name}" data-id="${id}">&times;</button></span>`;
+      }).join('');
+      $('chips').querySelectorAll('button').forEach(b => b.onclick = () => {
+        selected = selected.filter(id => id !== b.dataset.id); update();
+      });
+    }
+
+    async function draw() {
+      const id = $('measure').value, mode = $('mode').value, context = $('context').value;
+      const m = await measure(id);
+      const Plotly = await plotly();
+      if (!selected.length) { $('chart').innerHTML = '<p class="status">Add an institution to begin.</p>'; return; }
+
+      const rows = await query(`
+        SELECT inst_id, year, value FROM metrics
+        WHERE measure_id = ${lit(id)} AND inst_id IN (${selected.map(lit).join(',')}) ORDER BY year`);
+      const scale = v => m.unit === 'thousands_usd' ? v * 1000 : v;
+      const series = (pts) => {
+        const base = pts[0]?.value;
+        return pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null) : scale(p.value));
+      };
+
+      const traces = selected.map((sid, k) => {
+        const inst = insts.find(i => i.inst_id === sid);
+        const pts = rows.filter(r => r.inst_id === sid);
+        return { x: pts.map(p => p.year), y: series(pts), text: pts.map(p => fmt(p.value, m.unit)), name: inst.name,
+                 type: 'scatter', mode: 'lines+markers', line: { color: PALETTE[k % PALETTE.length], width: 2.5 },
+                 marker: { size: 7 }, hovertemplate: mode === 'value' ? '%{text}' : '%{y:.0f} (%{text})' };
+      });
+
+      if (context === 'sector') {
+        const sectors = [...new Set(selected.map(sid => insts.find(i => i.inst_id === sid).sector))];
+        const med = await query(`
+          SELECT i.sector, m.year, median(m.value) AS value, count(*) AS n
+          FROM metrics m JOIN institution_latest i USING (inst_id)
+          WHERE m.measure_id = ${lit(id)} AND i.sector IN (${sectors.map(lit).join(',')})
+          GROUP BY ALL ORDER BY m.year`);
+        for (const s of sectors) {
+          const pts = med.filter(r => r.sector === s);
+          traces.push({ x: pts.map(p => p.year), y: series(pts), text: pts.map(p => `${fmt(p.value, m.unit)}, median of ${p.n}`),
+                        name: `Median: ${s}`, type: 'scatter', mode: 'lines', line: { color: '#777', width: 1.5, dash: 'dash' },
+                        hovertemplate: mode === 'value' ? '%{text}' : '%{y:.0f} (%{text})' });
+        }
+      }
+
+      $('chart').innerHTML = '';
+      Plotly.react('chart', traces, {
+        ...BASE_LAYOUT,
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: mode === 'index' ? 'Index, FY 2012 = 100' : unitAxis(m.unit) },
+                 tickprefix: mode === 'value' && m.unit === 'thousands_usd' ? '$' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
+      }, CONFIG);
+      $('note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
+        'Source: NCSES HERD Survey public microdata, FY 2012-2024. Nominal dollars. Institution type from the 2021 Carnegie Classification.';
+    }
+
+    function update() {
+      const u = new URL(location);
+      u.searchParams.set('inst', selected.join(','));
+      u.searchParams.set('measure', $('measure').value);
+      history.replaceState(null, '', u);
+      renderChips();
+      draw();
+    }
+
+    $('search').addEventListener('change', () => {
+      const inst = byLabel.get($('search').value);
+      if (inst && !selected.includes(inst.inst_id)) { selected.push(inst.inst_id); update(); }
+      $('search').value = '';
+    });
+    for (const id of ['measure', 'mode', 'context']) $(id).addEventListener('change', update);
+    update();
+  </script>
+</body>
+</html>
