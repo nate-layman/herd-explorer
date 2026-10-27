@@ -192,6 +192,7 @@ ORDER BY m.year</pre></li>
 
     // ── What the model knows ────────────────────────────────────────────────
     const catalog = await query('SELECT id, label, category, unit, coverage FROM measure_catalog ORDER BY category, label');
+    const measureLabel = new Map(catalog.map(m => [m.id, m.label]));
     const sectors = (await query('SELECT DISTINCT sector FROM institution_latest ORDER BY 1')).map(r => r.sector);
     const SYSTEM = `You answer questions about the NCSES Higher Education Research and Development (HERD) Survey, FY 2012 to FY 2024, by writing DuckDB SQL that runs in the user's browser.
 
@@ -212,13 +213,45 @@ RULES
 - Use names with ILIKE for institutions (e.g. name ILIKE '%University of Idaho%'), and check the result is the institution you meant. To match several names, join ILIKE conditions with OR; ILIKE ANY is not supported.
 - National totals are sums over all institutions. Personnel counts exist only for 2022 to 2024.
 - After you see query results, answer in plain language in a few sentences. Report dollars in readable units ($1.2 billion, $45.3 million). Say which years and which measure you used. Never invent numbers that were not in the results; if the data cannot answer the question, say so.
-- If a chart would help, add one fenced block marked chart containing JSON: {"type": "line"|"bar"|"scatter", "sql": "<a SELECT>", "x": "<column>", "y": "<column>", "series": "<optional column that splits lines or bars>", "title": "<short title>", "y_label": "<axis label>"}. Keep to 8 series or fewer.
+- If a chart would help, put each chart in its own fenced block marked chart, containing valid JSON: {"type": "line"|"bar"|"scatter", "sql": "<a SELECT>", "x": "<column>", "y": "<column, or a list of columns for one line each>", "series": "<optional column whose values split the data into lines or bars>", "title": "<short title>", "y_label": "<axis label>"}. Use either a list of y columns or series, not both. Keep to 8 lines or fewer. Prefer millions of dollars on charts.
+- Write plainly. Do not use em dashes.
 - The data stop at FY 2024. For questions about the future, say that the Trends and Compare pages show model projections with uncertainty ranges, and that a projection shows where past trends lead if they continue; it does not account for known upcoming changes such as federal budget or policy shifts.
 - Do not give financial, budget, legal or investment advice.`;
 
     // ── Rendering ───────────────────────────────────────────────────────────
     const fenced = (text, lang) => [...text.matchAll(new RegExp('```' + lang + '\\s*\\n([\\s\\S]*?)```', 'g'))].map(m => m[1].trim());
-    const stripFences = text => text.replace(/```(sql|chart)\s*\n[\s\S]*?```/g, '').trim();
+
+    // Chart descriptions arrive in a ```chart block, a ```json block, or as bare JSON objects
+    // with "type" and "sql". Returns { charts: [json strings], text: reply without them }.
+    function takeCharts(reply) {
+      const charts = [];
+      // Unwrap fenced chart blocks so one top-to-bottom pass finds every chart in reply order
+      let text = reply.replace(/```(chart|json)\s*\n([\s\S]*?)```/g, (_, __, body) => `\n${body.trim()}\n`);
+      // Bare objects: scan for balanced braces that start a line, respecting strings
+      let out = '', i = 0;
+      while (i < text.length) {
+        const atLineStart = i === 0 || text[i - 1] === '\n';
+        if (text[i] === '{' && atLineStart) {
+          let depth = 0, inStr = false, j = i;
+          for (; j < text.length; j++) {
+            const c = text[j];
+            if (inStr) { if (c === '\\') j++; else if (c === '"') inStr = false; continue; }
+            if (c === '"') inStr = true;
+            else if (c === '{') depth++;
+            else if (c === '}' && --depth === 0) break;
+          }
+          const candidate = text.slice(i, j + 1);
+          if (depth === 0 && /"type"/.test(candidate) && /"sql"/.test(candidate)) {
+            charts.push(candidate);
+            i = j + 1;
+            continue;
+          }
+        }
+        out += text[i++];
+      }
+      text = out.replace(/```sql\s*\n[\s\S]*?```/g, '').trim();
+      return { charts, text };
+    }
     const markdown = text => DOMPurify.sanitize(marked.parse(text));
 
     function tableHtml(rows) {
@@ -243,21 +276,33 @@ RULES
       const res = await runSQL(spec.sql);
       if (res.error) { el.innerHTML = `<p class="sql-error">Chart query failed: ${esc(res.error)}</p>`; return; }
       const cols = res.rows.length ? Object.keys(res.rows[0]) : [];
-      for (const k of ['x', 'y', 'series']) if (spec[k] && !cols.includes(spec[k])) { el.innerHTML = `<p class="sql-error">Chart column not found: ${esc(spec[k])}</p>`; return; }
-      if (!spec.x || !spec.y) { el.innerHTML = '<p class="sql-error">Chart needs x and y columns.</p>'; return; }
-      const groups = new Map();
-      for (const r of res.rows) {
-        const g = spec.series ? String(r[spec.series]) : '';
-        if (!groups.has(g)) groups.set(g, []);
-        groups.get(g).push(r);
+      const ys = (Array.isArray(spec.y) ? spec.y : [spec.y]).filter(Boolean);
+      if (!spec.x || !ys.length) { el.innerHTML = '<p class="sql-error">Chart needs x and y columns.</p>'; return; }
+      for (const c of [spec.x, ...ys, spec.series].filter(Boolean)) {
+        if (typeof c !== 'string' || !cols.includes(c)) { el.innerHTML = `<p class="sql-error">Chart column not found: ${esc(c)}</p>`; return; }
       }
-      const names = [...groups.keys()].slice(0, 8);
       const plain = s => String(s ?? '').replace(/<[^>]*>/g, '');
-      const traces = names.map((g, k) => ({
-        x: groups.get(g).map(r => r[spec.x]), y: groups.get(g).map(r => r[spec.y]), name: plain(g),
+      // Legend names: measure ids become their labels, column names lose their underscores
+      const label = s => measureLabel.get(String(s)) ?? String(s).replace(/_/g, ' ');
+      // One line per series value, or one line per y column when y is a list
+      const lines = [];
+      if (spec.series) {
+        const groups = new Map();
+        for (const r of res.rows) {
+          const g = String(r[spec.series]);
+          if (!groups.has(g)) groups.set(g, []);
+          groups.get(g).push(r);
+        }
+        for (const [g, rows] of groups) lines.push({ name: g, x: rows.map(r => r[spec.x]), y: rows.map(r => r[ys[0]]) });
+      } else {
+        for (const c of ys) lines.push({ name: c, x: res.rows.map(r => r[spec.x]), y: res.rows.map(r => r[c]) });
+      }
+      const traces = lines.slice(0, 8).map((l, k) => ({
+        x: l.x, y: l.y, name: plain(label(l.name)),
         type: spec.type === 'bar' ? 'bar' : 'scatter', mode: spec.type === 'line' ? 'lines+markers' : 'markers',
         line: { color: PALETTE[k], width: 2.5 }, marker: { color: PALETTE[k], size: 7 },
       }));
+      const names = traces;
       const Plotly = await plotly();
       Plotly.newPlot(el, traces, {
         ...BASE_LAYOUT, showlegend: names.length > 1, barmode: 'group',
@@ -312,12 +357,13 @@ RULES
           thinking.innerHTML = 'Reading the results&hellip;';
         }
         thinking.remove();
-        const body = markdown(stripFences(reply) || '(No explanation returned.)');
+        const { charts, text } = takeCharts(reply);
+        const body = markdown(text || '(No explanation returned.)');
         const queries = ran.map((r, i) => `<details class="sql"><summary>Show the SQL${ran.length > 1 ? ` (${i + 1} of ${ran.length})` : ''}</summary>
             <pre>${esc(r.sql)}</pre>${r.error ? `<p class="sql-error">${esc(r.error)}</p>` : tableHtml(r.rows)}</details>`).join('');
         const msg = addMessage('model', body + queries +
           '<p class="answer-note">AI-generated answer from HERD Survey data. Check important numbers before relying on them.</p>');
-        for (const spec of fenced(reply, 'chart')) {
+        for (const spec of charts) {
           const el = document.createElement('div');
           el.className = 'ask-chart';
           msg.insertBefore(el, msg.querySelector('details') ?? msg.lastChild);
