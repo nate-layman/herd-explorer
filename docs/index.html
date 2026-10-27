@@ -58,7 +58,7 @@
     import { query, lit } from './js/db.js';
     import { plotly, PALETTE, OTHER, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
-    import { updateToggle, projectionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
+    import { updateToggle, groupBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
     renderLayout('index.html');
 
@@ -119,8 +119,9 @@
         mode === 'share' ? 'projections are not shown for shares of a total.' : null);
       const showProj = $('project').checked && canProject;
       if (showProj) {
-        const grpSql = top ? `CASE WHEN ${groupExpr} IN (${top.map(lit).join(',')}) THEN ${groupExpr} ELSE ${lit(otherLabel)} END` : groupExpr;
-        const bands = await projectionBands(id, `SELECT inst_id, ${grpSql} AS grp FROM institution_latest i`);
+        let bands = [];
+        try { bands = await groupBands(id, split, top, otherLabel); }
+        catch (e) { $('proj-flag').hidden = false; $('proj-flag').textContent = `⚠ ${e.message}`; }
         groups.forEach((g, k) => {
           const pts = rows.filter(r => r.grp === g).sort((a, b) => a.year - b.year);
           const b = bands.filter(x => x.grp === g);

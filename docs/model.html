@@ -86,9 +86,13 @@ sigma(size) = exp(fitted + 0.635)        # E[log|z|] = -0.635 for normal z</pre>
       <li>Widen every source of randomness by a factor chosen in testing (below), so the ranges are as wide as the past says
         they should be.</li>
     </ol>
-    <p>The site stores all 200 futures for every institution. For any group you choose, it adds up the institutions' futures
-      draw by draw and then takes the middle 80% and 90%. (Ranges for individual institutions cannot simply be added; the sum
-      of each institution's high value is far less likely than any one of them.)</p>
+    <p>All 200 futures are kept for every institution. A group's range comes from adding its institutions' futures draw by
+      draw and then taking the middle 80% and 90%. (Ranges for individual institutions cannot simply be added; the sum of each
+      institution's high value is far less likely than any one of them.) Those group sums are computed once a year for every
+      group on the Trends page, and every institution's futures are stored in a small file of their own, so the site
+      downloads only what the chart on screen needs. Every summed file carries a fingerprint of the institution-level
+      futures it was built from; the build stops if any group total disagrees with its institutions, and the site will not
+      draw a range from files whose fingerprints do not match.</p>
 
     <h2>How it was tested</h2>
     <p>The model was fit on data through FY 2018, then 2019, 2020 and 2021 in turn, and asked to project the next three years,
@@ -127,7 +131,7 @@ sigma(size) = exp(fitted + 0.635)        # E[log|z|] = -0.635 for normal z</pre>
 
     <h2>Reproduce it</h2>
     <p>Everything is in the <a id="repo" href="#">GitHub repository</a>. Run <code>Rscript pipeline/build.R</code> to rebuild
-      the data and <code>Rscript model/fit.R</code> to refit, test and simulate, then <code>model/publish.sh</code> to publish. The model is refit once a year when NCSES
+      the data and <code>Rscript model/fit.R</code> to refit, test and simulate, then <code>model/publish.sh</code> to rebuild the group and institution files, check them and publish. The model is refit once a year when NCSES
       releases a new survey year.</p>
   </main>
 

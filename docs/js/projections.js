@@ -1,7 +1,6 @@
-// Projection bands for any group of institutions, from the simulation draws in
-// <measure>.parquet files on Hugging Face (see PROJECTIONS). Draws are summed within each group before
-// taking percentiles, because percentiles of institutions do not add up to the
-// percentile of their total.
+// Projection bands from the simulation draws on Hugging Face (see PROJECTIONS). Draws
+// are summed within a group before taking percentiles, because percentiles of
+// institutions do not add up to the percentile of their total.
 import { query, ensureView, lit } from './db.js';
 
 // Projection draws are published to Hugging Face by model/publish.sh
@@ -35,35 +34,56 @@ export async function updateToggle(checkbox, flag, measureId, extraReason = null
   return !reason;
 }
 
-// groupSql: a SELECT returning (inst_id, grp) for the institutions to include.
+const BANDS = `
+  quantile_cont(total, 0.05) AS p05, quantile_cont(total, 0.10) AS p10, quantile_cont(total, 0.50) AS p50,
+  quantile_cont(total, 0.90) AS p90, quantile_cont(total, 0.95) AS p95`;
+
+// Bands for the groups Trends shows. by_group/<measure>.parquet holds each group's draws
+// already summed (including unmodeled institutions held at their last value). Groups
+// outside `top` are folded into otherLabel by adding their draws draw by draw.
 // Returns rows of { grp, year, p05, p10, p50, p90, p95 } in thousands of dollars.
-// Institutions in a group that were not modeled (too few years, or not reporting in
-// the last year) contribute their last reported value, held flat.
-export async function projectionBands(measureId, groupSql) {
-  const view = `proj_${measureId}`;
-  await ensureView(view, `${PROJECTIONS}${measureId}.parquet`);
+export const STALE = 'Projection files are being updated. Try again in a few minutes.';
+
+// Derived files carry the fingerprint of the detail draws they were built from; model_info
+// carries the fingerprint of the current fit. A mismatch means a partial update, so no band
+// is drawn rather than one that might disagree with the details.
+async function assertCurrent(view) {
+  const want = (await projectedMeasures())[0]?.fit_id;
+  const [{ n, id }] = await query(`SELECT count(DISTINCT fit_id) AS n, any_value(fit_id) AS id FROM ${view}`);
+  if (!want || n !== 1 || id !== want) throw new Error(STALE);
+}
+
+export async function groupBands(measureId, split, top = null, otherLabel = 'All other') {
+  const view = `grp_${measureId}`;
+  await ensureView(view, `${PROJECTIONS}by_group/${measureId}.parquet`);
+  await assertCurrent(view);
+  const grp = top ? `CASE WHEN grp IN (${top.map(lit).join(',')}) THEN grp ELSE ${lit(otherLabel)} END` : 'grp';
   return query(`
-    WITH groups AS (${groupSql}),
-    last_year AS (SELECT max(year) AS y FROM metrics WHERE measure_id = ${lit(measureId)}),
-    modeled AS (SELECT DISTINCT inst_id FROM ${view}),
-    flat AS (
-      SELECT g.grp, sum(m.value) AS v
-      FROM metrics m JOIN groups g USING (inst_id)
-      WHERE m.measure_id = ${lit(measureId)} AND m.year = (SELECT y FROM last_year)
-        AND m.inst_id NOT IN (SELECT inst_id FROM modeled)
-      GROUP BY g.grp),
-    totals AS (
-      SELECT g.grp, p.year, p.draw, sum(p.value) AS total
-      FROM ${view} p JOIN groups g USING (inst_id)
-      GROUP BY ALL)
-    SELECT t.grp, t.year,
-           quantile_cont(t.total + coalesce(f.v, 0), 0.05) AS p05,
-           quantile_cont(t.total + coalesce(f.v, 0), 0.10) AS p10,
-           quantile_cont(t.total + coalesce(f.v, 0), 0.50) AS p50,
-           quantile_cont(t.total + coalesce(f.v, 0), 0.90) AS p90,
-           quantile_cont(t.total + coalesce(f.v, 0), 0.95) AS p95
-    FROM totals t LEFT JOIN flat f USING (grp)
-    GROUP BY ALL ORDER BY t.grp, t.year`);
+    WITH totals AS (
+      SELECT ${grp} AS grp, year, draw, sum(value) AS total
+      FROM ${view} WHERE split = ${lit(split)} GROUP BY ALL)
+    SELECT grp, year, ${BANDS} FROM totals GROUP BY ALL ORDER BY grp, year`);
+}
+
+// Bands for individual institutions, from by_institution/inst_id=<id>/data_0.parquet, one
+// small file per institution. Institutions the model did not project have no file and
+// are left out. Returns rows of { grp: inst_id, year, p05, ..., p95 }.
+export async function institutionBands(measureId, instIds) {
+  const out = [];
+  for (const id of instIds) {
+    const view = `inst_${id.replace(/\W/g, '_')}`;
+    try {
+      await ensureView(view, `${PROJECTIONS}by_institution/inst_id=${encodeURIComponent(id)}/data_0.parquet`);
+    } catch {
+      continue;  // no projection file for this institution
+    }
+    await assertCurrent(view);
+    out.push(...await query(`
+      SELECT ${lit(id)} AS grp, year, ${BANDS}
+      FROM (SELECT year, draw, value AS total FROM ${view} WHERE measure_id = ${lit(measureId)})
+      GROUP BY year ORDER BY year`));
+  }
+  return out;
 }
 
 // Plotly traces for one group's band: 90% band, 80% band and the median, joined to

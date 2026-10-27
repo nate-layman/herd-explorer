@@ -47,7 +47,7 @@
     import { query, lit } from './js/db.js';
     import { plotly, PALETTE, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
-    import { updateToggle, projectionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
+    import { updateToggle, institutionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
     renderLayout('compare.html');
     const $ = id => document.getElementById(id);
@@ -102,7 +102,9 @@
 
       const canProject = await updateToggle($('project'), $('proj-flag'), id);
       if ($('project').checked && canProject) {
-        const bands = await projectionBands(id, `SELECT inst_id, inst_id AS grp FROM institution_latest WHERE inst_id IN (${selected.map(lit).join(',')})`);
+        let bands = [];
+        try { bands = await institutionBands(id, selected); }
+        catch (e) { $('proj-flag').hidden = false; $('proj-flag').textContent = `⚠ ${e.message}`; }
         selected.forEach((sid, k) => {
           const pts = rows.filter(r => r.inst_id === sid);
           const b = bands.filter(x => x.grp === sid);

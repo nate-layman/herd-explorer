@@ -71,15 +71,17 @@ export async function columns(sql) {
 const registered = new Map();
 export async function ensureView(view, path) {
   if (!registered.has(view)) {
-    registered.set(view, (async () => {
+    const pending = (async () => {
       const conn = await connection();
       const db = database;
       // A full URL (such as the Hugging Face projections) is used as is; anything else is under docs/data/
       const url = /^https?:/.test(path) ? path : new URL(`data/${path}`, document.baseURI).href;
       const name = `${view}.parquet`;
       await db.registerFileURL(name, url, duckdb.DuckDBDataProtocol.HTTP, false);
-      await conn.query(`CREATE VIEW ${view} AS SELECT * FROM read_parquet('${name}')`);
-    })());
+      await conn.query(`CREATE OR REPLACE VIEW ${view} AS SELECT * FROM read_parquet('${name}')`);
+    })();
+    registered.set(view, pending);
+    pending.catch(() => registered.delete(view));
   }
   return registered.get(view);
 }
