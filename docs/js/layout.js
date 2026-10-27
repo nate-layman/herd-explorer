@@ -7,6 +7,7 @@ const PAGES = [
   ['compare.html', 'Compare'],
   ['explore.html', 'Explore'],
   ['pivot.html', 'Pivot'],
+  ['ask.html', 'Ask'],
   ['model.html', 'About the model'],
   ['data.html', 'Data & sources'],
 ];

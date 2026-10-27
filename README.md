@@ -46,7 +46,17 @@ Rscript pipeline/build.R
 
 ## Built with
 
-Added as each library goes in, with its license.
+- [DuckDB-WASM](https://github.com/duckdb/duckdb-wasm) (MIT): the database in your browser
+- [Plotly.js](https://github.com/plotly/plotly.js) (MIT): charts
+- [Graphic Walker](https://github.com/Kanaries/graphic-walker) (Apache 2.0) and React (MIT): the Explore page
+- [Perspective](https://github.com/perspective-dev/perspective) (Apache 2.0): the Pivot page
+- [marked](https://github.com/markedjs/marked) (MIT) and [DOMPurify](https://github.com/cure53/DOMPurify) (Apache 2.0 or MPL 2.0): rendering answers on the Ask page
+- Google Gen AI SDK and Anthropic SDK (Apache 2.0): loaded only on the Ask page, only for those providers' keys
+- Offline, in R: duckdb, readxl, mgcv, scoringRules, writexl
+
+## Ask the data
+
+The Ask page lets you ask questions in plain language. Bring your own key: a University of Idaho MindRouter key (`mr2_...`), or an Anthropic, OpenAI or Google Gemini key. Paste it on the page, or open the page from a link like `ask.html?key=...`; the key is read once, removed from the address bar, and kept only in that browser tab. The model writes SQL that runs read-only in your browser; only your question and the query results go to the provider you chose.
 
 ## License
 
