@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HERD Explorer: About the model</title>
+  <meta name="description" content="How HERD Explorer projects research and development spending: a hierarchical growth model, its simulation, and how it was tested." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/site.css" />
+  <style>
+    main { max-width: 900px; }
+    main p, main li { max-width: 52rem; }
+    pre { background: var(--panel); padding: 0.8rem 1rem; border-radius: 0.4rem; overflow-x: auto; font-size: 0.85rem; }
+    .callout { background: #fff8e6; border-left: 3px solid #eda100; padding: 0.6rem 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>About the model</h1>
+    <p class="callout"><strong>A projection is a best guess from past trends, not a forecast.</strong> It may not reflect what
+      actually happens. The model cannot see policy changes, agency budgets, survey revisions, or an institution's own plans.
+      Treat the shaded range, not the middle line, as the result.</p>
+
+    <h2>What is projected</h2>
+    <p>Fiscal years 2025 to 2029, for each institution, for nine measures: total R&amp;D; R&amp;D funded by the federal
+      government, institution funds, business, nonprofit organizations, and state and local government; and federally funded
+      R&amp;D from Health and Human Services (including NIH), the National Science Foundation and the Department of Defense.
+      Any group on the site (a sector, a state, public or private, a set of institutions you pick, the nation) is projected by
+      adding up its institutions' simulated futures.</p>
+
+    <h2>Data</h2>
+    <ul>
+      <li>NCSES HERD Survey, FY 2012 to FY 2024, one value per institution and year. Nominal dollars, on the log scale.</li>
+      <li>An institution is modeled if it reported a positive amount in at least four years and reported in FY 2024.
+        Institutions that do not qualify are held at their last reported value when a group is projected.</li>
+      <li>Institution type is the 2021 Carnegie Classification, held fixed. Types with few institutions (associate's and
+        tribal colleges, system offices, independent research institutes, unclassified units) are pooled as "Other" for
+        modeling.</li>
+    </ul>
+
+    <h2>The model in words</h2>
+    <p>University R&amp;D budgets behave much like a <em>random walk with drift</em>: a jump in one year tends to persist, and
+      spending grows at some typical rate with year-to-year surprises. So the model describes <strong>growth</strong>, the
+      change in log spending from one year to the next, and every projection starts from the institution's last reported
+      value.</p>
+    <ul>
+      <li><strong>Typical growth by type</strong> (fixed effect): R1 universities, R2 universities, master's institutions and
+        so on each get their own average growth rate.</li>
+      <li><strong>State and institution</strong> (random effects): each state and each institution may grow faster or slower
+        than its type. These are estimated with partial pooling, so an institution with a short or noisy history is pulled
+        toward its type and state. In the fitted models these effects come out very small: once you know an institution's
+        type and the shocks every institution shared in a year, its own past growth rate tells you little about its future
+        growth.</li>
+      <li><strong>Shared shocks</strong> (random effects by year, and by year within type): good and bad years hit many
+        institutions at once, such as the 2013 sequestration or the post-2021 jump. The model estimates how large those shocks
+        are and simulates new ones for each future year. Because every institution in a simulated future feels the same
+        shock, a group's total has a realistic range instead of an overly narrow one.</li>
+      <li><strong>Size-dependent noise</strong>: what is left over is far larger for small institutions, whose budgets can
+        double or halve, than for large ones. The size of that noise is estimated as a smooth function of institution size.</li>
+    </ul>
+
+    <h2>The model as code</h2>
+    <p>Fit with the R package <a href="https://cran.r-project.org/package=mgcv">mgcv</a>, one model per measure:</p>
+    <pre>growth = log(value[t]) - log(value[t - 1])
+
+bam(growth ~ sector                      # typical growth by institution type
+           + s(state, bs = "re")         # state random effect
+           + s(inst,  bs = "re")         # institution random effect
+           + s(year,  bs = "re")         # shock shared by every institution in a year
+           + s(year_x_sector, bs = "re"), # shock shared within a type in a year
+    method = "fREML")
+
+# Noise that depends on size (two-step location-scale model)
+gam(log(abs(residual)) ~ s(log(last_value), k = 6))
+sigma(size) = exp(fitted + 0.635)        # E[log|z|] = -0.635 for normal z</pre>
+
+    <h2>How the projections are simulated</h2>
+    <ol>
+      <li>Draw 200 sets of model coefficients from their estimated distribution (including uncertainty in the smoothing
+        parameters). Each draw is one possible version of the typical growth rates.</li>
+      <li>For each future year, draw a new national shock and a new shock for each institution type, shared by every
+        institution in that draw.</li>
+      <li>Add each institution's own noise, sized to the institution.</li>
+      <li>Accumulate growth from the institution's FY 2024 value to get five years of possible future values.</li>
+      <li>Widen every source of randomness by a factor chosen in testing (below), so the ranges are as wide as the past says
+        they should be.</li>
+    </ol>
+    <p>The site stores all 200 futures for every institution. For any group you choose, it adds up the institutions' futures
+      draw by draw and then takes the middle 80% and 90%. (Ranges for individual institutions cannot simply be added; the sum
+      of each institution's high value is far less likely than any one of them.)</p>
+
+    <h2>How it was tested</h2>
+    <p>The model was fit on data through FY 2018, then 2019, 2020 and 2021 in turn, and asked to project the next three years,
+      which had already happened. Projections were scored with the continuous ranked probability score (CRPS) on the log scale:
+      it rewards projections that are close and honest about their uncertainty, and lower is better. Two alternatives were
+      scored the same way: a naive approach (each institution continues its own average growth) and a model of spending levels
+      with Gaussian process trends by type and correlated year-to-year errors, which was the first design considered. The
+      growth model was more accurate than both at every horizon and every institution size.</p>
+    <table class="data" id="overall"><tr><td class="status">Loading&hellip;</td></tr></table>
+    <h3>By institution size</h3>
+    <table class="data" id="by-size"><tr><td class="status">Loading&hellip;</td></tr></table>
+    <h3>Choosing how wide the ranges are</h3>
+    <p>Before widening, only about 73% of real outcomes fell inside the 80% range. Each source of randomness was multiplied by
+      several candidate factors, and the one whose ranges captured closest to 80% and 90% of real outcomes was kept.</p>
+    <table class="data" id="calibration"><tr><td class="status">Loading&hellip;</td></tr></table>
+
+    <h2>Fitted models</h2>
+    <table class="data" id="info"><tr><td class="status">Loading&hellip;</td></tr></table>
+
+    <h2>Limitations</h2>
+    <ul>
+      <li>Dollars are nominal, so the projections include inflation.</li>
+      <li>Thirteen years is a short history. Shocks larger than any seen since 2012 are not ruled out, only unlikely under the
+        model.</li>
+      <li>The model projects institutions that keep reporting. It does not project institutions entering or leaving the
+        survey, mergers, or a measure dropping to zero.</li>
+      <li>Policy changes that have been announced but have not yet shown up in the data, such as changes to indirect cost
+        rates or agency budgets, are not in the model.</li>
+      <li>Testing used total R&amp;D; the same model and widening factor are applied to the other eight measures.</li>
+    </ul>
+
+    <h2>Reproduce it</h2>
+    <p>Everything is in the <a id="repo" href="#">GitHub repository</a>. Run <code>Rscript pipeline/build.R</code> to rebuild
+      the data and <code>Rscript model/fit.R</code> to refit, test and simulate. The model is refit once a year when NCSES
+      releases a new survey year.</p>
+  </main>
+
+  <script type="module">
+    import { renderLayout, REPO } from './js/layout.js';
+    import { query, ensureView, lit } from './js/db.js';
+
+    renderLayout('model.html');
+    const $ = id => document.getElementById(id);
+    $('repo').href = REPO;
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const pct = v => `${Math.round(100 * v)}%`;
+
+    for (const v of ['backtest_overall', 'backtest_by_size', 'backtest_calibration', 'model_info'])
+      await ensureView(v, `projections/${v}.parquet`);
+
+    const overall = await query('SELECT * FROM backtest_overall ORDER BY crps');
+    $('overall').innerHTML = '<tr><th>Approach</th><th>CRPS (lower is better)</th><th>Real outcomes inside the 80% range</th><th>Inside the 90% range</th></tr>' +
+      overall.map((r, i) => `<tr><td>${esc(r.model)}${i === 0 ? ' <strong>(used on this site)</strong>' : ''}</td>
+        <td>${r.crps.toFixed(3)}</td><td>${pct(r.in80)}</td><td>${pct(r.in90)}</td></tr>`).join('');
+
+    const sizes = await query('SELECT * FROM backtest_by_size ORDER BY size, crps');
+    $('by-size').innerHTML = '<tr><th>Size in last training year</th><th>Approach</th><th>CRPS</th><th>Inside 80%</th><th>Inside 90%</th></tr>' +
+      sizes.map(r => `<tr><td>${esc(r.size)}</td><td>${esc(r.model)}</td><td>${r.crps.toFixed(3)}</td><td>${pct(r.in80)}</td><td>${pct(r.in90)}</td></tr>`).join('');
+
+    const info = await query('SELECT * FROM model_info');
+    const widen = info[0]?.interval_widening;
+    const cal = await query('SELECT * FROM backtest_calibration ORDER BY widen');
+    $('calibration').innerHTML = '<tr><th>Widening factor</th><th>CRPS</th><th>Inside 80%</th><th>Inside 90%</th></tr>' +
+      cal.map(r => `<tr><td>${r.widen}${r.widen === widen ? ' <strong>(used)</strong>' : ''}</td><td>${r.crps.toFixed(3)}</td><td>${pct(r.in80)}</td><td>${pct(r.in90)}</td></tr>`).join('');
+
+    const labels = Object.fromEntries((await query('SELECT id, label FROM measure_catalog')).map(m => [m.id, m.label]));
+    $('info').innerHTML = '<tr><th>Measure</th><th>Institutions modeled</th><th>Year shock (SD)</th><th>Year-by-type shock (SD)</th><th>Projected</th><th>Fitted on</th></tr>' +
+      info.map(r => `<tr><td>${esc(labels[r.measure_id] ?? r.measure_id)}</td><td>${r.institutions}</td>
+        <td>${r.sd_year_shock?.toFixed(3) ?? ''}</td><td>${r.sd_year_sector_shock?.toFixed(3) ?? ''}</td>
+        <td>FY ${r.first_projected_year} to ${r.last_projected_year}</td><td>${esc(r.fitted_on)}</td></tr>`).join('');
+  </script>
+</body>
+</html>

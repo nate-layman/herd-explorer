@@ -133,7 +133,7 @@
         });
       }
       $('proj-note').hidden = !showProj;
-      $('proj-note').innerHTML = `${DISCLAIMER_SHORT} Shaded bands show the 80% and 90% ranges. <a href="data.html#methods">How projections are made</a>.`;
+      $('proj-note').innerHTML = `${DISCLAIMER_SHORT} Shaded bands show the 80% and 90% ranges. <a href="model.html">How projections are made</a>.`;
 
       const yTitle = mode === 'index' ? 'Index, FY 2012 = 100' : mode === 'share' ? 'Percent of national total' : unitAxis(m.unit);
       const Plotly = await plotly();

@@ -114,7 +114,7 @@
         });
       }
       $('proj-note').hidden = !($('project').checked && canProject);
-      $('proj-note').innerHTML = `${DISCLAIMER_SHORT} Shaded bands show the 80% and 90% ranges. <a href="data.html#methods">How projections are made</a>.`;
+      $('proj-note').innerHTML = `${DISCLAIMER_SHORT} Shaded bands show the 80% and 90% ranges. <a href="model.html">How projections are made</a>.`;
 
       if (context === 'sector') {
         const sectors = [...new Set(selected.map(sid => insts.find(i => i.inst_id === sid).sector))];
