@@ -106,7 +106,8 @@ ORDER BY m.year</pre></li>
           rows.</li>
         <li><strong>The model reads the results.</strong> Up to 60 rows go back to the model, which explains them in plain
           language. If a query failed or returned the wrong thing, it can write a corrected one, up to three rounds per
-          question.</li>
+          question. If it is still querying after three, it must answer using only numbers the queries returned, or say
+          plainly that it could not get the answer; it never estimates or fills in missing numbers.</li>
         <li><strong>Charts are data, not code.</strong> When a chart helps, the model describes it (chart type, a query, which
           columns go on each axis). The page checks that description, runs the query, and draws the chart itself. Nothing the
           model writes is run as code.</li>
@@ -402,11 +403,16 @@ ${contents}`;
                  'If a query failed or returned the wrong thing, write a corrected query instead.';
           thinking.innerHTML = 'Reading the results&hellip;';
         }
-        // Out of rounds while the model was still querying: its last query has run, so ask once
-        // more for an answer from the results, instead of showing "let me rerun the query" as the answer
-        if (fenced(reply, 'sql').length) {
-          turn += '\n\nThis is the last round: answer now from the results above without writing another query. ' +
-                  'If they are not enough to answer, say what is missing.';
+        // Out of rounds while the model was still querying: its last query has run, so give it one
+        // turn to report, instead of showing "let me rerun the query" as the answer. It may only
+        // report numbers the queries returned; if they do not answer the question, it says so and stops.
+        const outOfRounds = fenced(reply, 'sql').length > 0;
+        if (outOfRounds) {
+          turn += '\n\nNo more queries can be run for this question. Reply in plain language using only numbers that ' +
+                  'appear in the query results, converted to readable units if needed. Do not estimate, interpolate, ' +
+                  'extrapolate, or correct a number yourself. If the results do not answer the question (a query failed, ' +
+                  'returned the wrong thing, or is missing data), say plainly that you could not get the answer and why, ' +
+                  'report only what the results do show, and stop.';
           reply = await callModel(SYSTEM, history, turn);
           history.push({ role: 'user', text: turn }, { role: 'model', text: reply });
         }
@@ -417,7 +423,9 @@ ${contents}`;
             <pre>${esc(r.sql)}</pre>${r.error ? `<p class="sql-error">${esc(r.error)}</p>` : tableHtml(r.rows)}</details>`).join('');
         const sources = read.filter(n => HELP_DOCS.has(n));
         const readNote = sources.length ? `<p class="answer-note">Read: ${sources.map(esc).join(', ')}</p>` : '';
-        const msg = addMessage('model', body + readNote + queries +
+        const roundsNote = outOfRounds ? `<p class="answer-note">This answer used all ${MAX_ROUNDS} query attempts. ` +
+          'Open the last query below to check what it returned.</p>' : '';
+        const msg = addMessage('model', body + readNote + roundsNote + queries +
           '<p class="answer-note">AI-generated answer from HERD Survey data. Check important numbers before relying on them.</p>');
         for (const spec of charts) {
           const el = document.createElement('div');

@@ -17,7 +17,7 @@ Forget clears the key. New starts a new conversation.
 
 1. The model is told the tables, every measure with its meaning and coverage, the institution types, and rules for answering.
 2. It writes a SQL query. Your browser allows only a single read-only SELECT (no file or web access, no writes, no extensions) and caps results at 1,000 rows.
-3. Up to 60 rows go back to the model, which explains them. If a query failed, it can write a corrected one, up to three rounds per question.
+3. Up to 60 rows go back to the model, which explains them. If a query failed, it can write a corrected one, up to three rounds per question. If it is still querying after three, it must answer from what the queries returned, using only those numbers, or say plainly that it could not get the answer. It never estimates or fills in missing numbers. Such answers carry a note that all query attempts were used.
 4. Charts are descriptions (type, a query, which columns go where) that the page checks and draws itself; nothing the model writes runs as code.
 5. Every answer has Show the SQL panels with the exact queries and results.
 6. For help using the site or questions about methods, the model can read these help documents; the answer lists which ones it read.
