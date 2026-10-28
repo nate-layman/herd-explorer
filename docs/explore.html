@@ -93,11 +93,11 @@
     <section id="panel-chart" class="panel" role="tabpanel" aria-labelledby="tab-chart" hidden>
       <div class="presets" id="gw-examples">
         <span>Examples:</span>
+        <button data-chart="4">Start your own</button>
         <button data-chart="0" aria-pressed="true">R&amp;D by institution type</button>
         <button data-chart="1">NIH funding by institution type</button>
         <button data-chart="2">States, FY 2024</button>
         <button data-chart="3">Federal vs. business funding, FY 2024</button>
-        <button data-chart="4">Start your own</button>
         <button class="help">How to build your own</button>
       </div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
@@ -319,7 +319,8 @@
         { name: 'States, FY 2024', mark: 'bar', y: { field: 'state', sort: 'descending' }, x: ALL, filters: latest },
         { name: 'Federal vs. business, FY 2024', mark: 'point', x: 'Source of funds: Federal government',
           y: 'Source of funds: Business', color: 'sector', aggregate: false, filters: latest },
-        { name: 'Your chart' },
+        // filters makes normalize() read this as a terse spec, which fills the field list from the data
+        { name: 'Your chart', filters: [] },
       ];
       const gwRef = React.createRef();
       $('gw').innerHTML = '';
