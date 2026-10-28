@@ -1,0 +1,70 @@
+# Rebuild the data and projections and open a pull request with the result.
+# Run it from the Actions tab after editing pipeline/release.yml for a new survey year (see RELEASING.md),
+# or any time to rebuild from the current sources. Nothing is published until the pull request is merged;
+# publish.yml then uploads the projections.
+name: Refresh data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+env:
+  # Dated package snapshot, so reruns use the same package versions
+  R_REPOS: https://packagemanager.posit.co/cran/__linux__/noble/2026-10-01
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+
+      - name: Install R packages
+        run: make packages
+
+      - name: Build the data and check it against NCSES
+        run: make data
+
+      - name: Backtest, fit and simulate projections
+        run: make model 2>&1 | tee model.log
+
+      - name: Run the publish checks without uploading
+        run: make check
+
+      - name: Summarize
+        run: |
+          {
+            echo "Rebuilt by the Refresh data workflow ([run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}))."
+            echo
+            echo '```json'
+            cat docs/data/meta.json
+            echo '```'
+            echo
+            echo 'Model selection and backtest (from `make model`):'
+            echo '```'
+            grep -E "interval widening factor|production model" model.log || true
+            echo '```'
+            echo
+            echo 'Merging this pull request updates the site and runs publish.yml, which refits and uploads the projections to Hugging Face.'
+          } > pr-body.md
+          rm model.log
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: data-refresh
+          delete-branch: true
+          add-paths: docs/data
+          commit-message: "Refresh data from NCSES (release.yml)"
+          title: "Data refresh"
+          body-path: pr-body.md

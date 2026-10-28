@@ -1,0 +1,26 @@
+# The one file to edit when NCSES releases a new HERD survey year. See RELEASING.md.
+# The build, the model, the site text and the help documents all take their years from here.
+
+# Survey years in the microdata. Bump last_year when the new year's files appear at
+# https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development
+first_year: 2012
+last_year: 2024
+
+# The NCSES publication with that release's data tables, used to check the national totals.
+# Find it from the HERD survey page: https://ncses.nsf.gov/surveys/higher-education-research-development
+# publication is the id in its address, https://ncses.nsf.gov/pubs/<publication>.
+tables:
+  publication: nsf26304
+  # Table numbers inside that publication. They have been stable across releases; check them if the build stops.
+  source_of_funds: 2     # R&D expenditures by source of funds, all institutions
+  type_of_cost: 12       # R&D expenditures by type of cost, standard-form institutions
+
+# COGR's count of federal research requirements, typed from the data labels on COGR's Figure 1
+# into pipeline/cogr_requirements.csv. Update both when COGR updates the figure.
+cogr:
+  updated: January 2025
+
+# Projections
+projection:
+  horizon: 5             # years projected past last_year
+  backtest_cutoffs: 4    # refit on data through last_year - 6 ... last_year - 3, then score the next 3 years

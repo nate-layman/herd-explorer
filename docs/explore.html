@@ -96,8 +96,8 @@
         <button data-chart="4">Start your own</button>
         <button data-chart="0" aria-pressed="true">R&amp;D by institution type</button>
         <button data-chart="1">NIH funding by institution type</button>
-        <button data-chart="2">States, FY 2024</button>
-        <button data-chart="3">Federal vs. business funding, FY 2024</button>
+        <button data-chart="2">States, FY <span data-meta="last_year">2024</span></button>
+        <button data-chart="3">Federal vs. business funding, FY <span data-meta="last_year">2024</span></button>
         <button class="help">How to build your own</button>
       </div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
@@ -128,7 +128,7 @@
       <ul>
         <li class="recipe">Idaho institutions, every year<button data-view="idaho">Show me</button></li>
         <li class="recipe">Institution type, then state<button data-view="sectorState">Show me</button></li>
-        <li class="recipe">Each federal agency by institution type, FY 2024<button data-view="agencySector">Show me</button></li>
+        <li class="recipe">Each federal agency by institution type, FY <span data-meta="last_year">2024</span><button data-view="agencySector">Show me</button></li>
         <li class="recipe">R1 universities' federal funding, by agency<button data-view="r1Agency">Show me</button></li>
       </ul>
       <h3>Chart builder tab</h3>
@@ -147,16 +147,18 @@
         easier.</p>
     </dialog>
 
-    <p class="chart-note">Source: NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars. Institution type (sector)
+    <p class="chart-note">Source: NCSES HERD Survey public microdata, FY <span data-meta="first_year">2012</span>-<span data-meta="last_year">2024</span>, nominal dollars. Institution type (sector)
       from the 2021 Carnegie Classification. Measures marked "standard form" cover institutions with $1 million or more in
       R&amp;D; see <a href="data.html">Data &amp; sources</a> for every definition.</p>
   </main>
 
   <script type="module">
     import { renderLayout } from './js/layout.js';
+    import { meta } from './js/meta.js';
     import { query, columns } from './js/db.js';
 
     renderLayout('explore.html');
+    const M = await meta;
     const $ = id => document.getElementById(id);
 
     let showView;  // set once the table has loaded
@@ -218,7 +220,7 @@
         idaho: { ...base, group_by: ['institution'], filter: [...ALL, ['state', '==', 'ID']] },
         sectorState: { ...base, group_by: ['sector', 'state'], filter: ALL },
         agencySector: { ...base, group_by: ['measure'], split_by: ['sector'],
-                        filter: [['category', '==', 'Federal agency'], ['year', '==', '2024']] },
+                        filter: [['category', '==', 'Federal agency'], ['year', '==', String(M.last_year)]] },
         r1Agency: { ...base, group_by: ['measure'], filter: [['category', '==', 'Federal agency'], ['sector', '==', 'R1']] },
         // Every row as it is stored: one institution, year and measure
         raw: { plugin: 'Datagrid', group_by: [], split_by: [], filter: [], columns_config: fmt0,
@@ -312,12 +314,12 @@
       for (const r of rows) for (const d of ['minority-serving', 'hbcu', 'medical school', 'land-grant']) r[d] = r[d] ? 'Yes' : 'No';
       // Example charts open as tabs; the buttons above switch between them
       const ALL = 'Source of funds: All R&D';
-      const latest = [{ field: 'year', oneOf: [2024] }];
+      const latest = [{ field: 'year', oneOf: [M.last_year] }];
       const examples = [
         { name: 'R&D by institution type', mark: 'line', x: 'year', y: ALL, color: 'sector' },
         { name: 'NIH funding by institution type', mark: 'bar', x: 'year', y: 'Federal agency: Health and Human Services (incl. NIH)', color: 'sector' },
-        { name: 'States, FY 2024', mark: 'bar', y: { field: 'state', sort: 'descending' }, x: ALL, filters: latest },
-        { name: 'Federal vs. business, FY 2024', mark: 'point', x: 'Source of funds: Federal government',
+        { name: `States, FY ${M.last_year}`, mark: 'bar', y: { field: 'state', sort: 'descending' }, x: ALL, filters: latest },
+        { name: `Federal vs. business, FY ${M.last_year}`, mark: 'point', x: 'Source of funds: Federal government',
           y: 'Source of funds: Business', color: 'sector', aggregate: false, filters: latest },
         // filters makes normalize() read this as a terse spec, which fills the field list from the data
         { name: 'Your chart', filters: [] },

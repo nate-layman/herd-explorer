@@ -23,7 +23,7 @@
       <label>Show as
         <select id="mode">
           <option value="value">Amount</option>
-          <option value="index">Index (FY 2012 = 100)</option>
+          <option value="index" data-meta-text="Index (FY {first_year} = 100)">Index (FY 2012 = 100)</option>
         </select>
       </label>
       <label>Context
@@ -32,7 +32,7 @@
           <option value="none">None</option>
         </select>
       </label>
-      <label class="inline"><span><input type="checkbox" id="project" /> Show projection to FY 2029</span></label>
+      <label class="inline"><span><input type="checkbox" id="project" /> Show projection to FY <span data-meta="projection_last_year">2029</span></span></label>
       <span id="proj-flag" class="proj-flag" role="status" hidden></span>
     </div>
     <div id="chips" class="chips"></div>
@@ -44,12 +44,14 @@
 
   <script type="module">
     import { renderLayout } from './js/layout.js';
+    import { meta } from './js/meta.js';
     import { query, lit } from './js/db.js';
     import { plotly, PALETTE, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
     import { updateToggle, institutionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
     renderLayout('compare.html');
+    const M = await meta;
     const $ = id => document.getElementById(id);
 
     const insts = await query(`SELECT inst_id, name, state, sector FROM institution_latest ORDER BY name`);
@@ -135,11 +137,11 @@
       if (!$('chart').data) $('chart').innerHTML = '';
       Plotly.react('chart', traces, {
         ...BASE_LAYOUT,
-        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: mode === 'index' ? 'Index, FY 2012 = 100' : unitAxis(m.unit) },
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: mode === 'index' ? `Index, FY ${M.first_year} = 100` : unitAxis(m.unit) },
                  tickprefix: mode === 'value' && m.unit === 'thousands_usd' ? '$' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
-        'Source: NCSES HERD Survey public microdata, FY 2012-2024. Nominal dollars. Institution type from the 2021 Carnegie Classification.';
+        `Source: NCSES HERD Survey public microdata, FY ${M.first_year}-${M.last_year}. Nominal dollars. Institution type from the 2021 Carnegie Classification.`;
     }
 
     function update() {

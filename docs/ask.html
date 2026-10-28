@@ -51,7 +51,7 @@
   <main>
     <h1>Ask the data</h1>
     <p class="lede">Ask a question in plain language. An AI model writes a database query, the query runs here in your
-      browser on the HERD data (FY 2012 to FY 2024), and the model explains the result. You can always open the query to
+      browser on the HERD data (FY <span data-meta="first_year">2012</span> to FY <span data-meta="last_year">2024</span>), and the model explains the result. You can always open the query to
       see exactly what was counted. AI can misread a question or write the wrong query, so check important numbers on the
       Trends or Compare pages.</p>
 
@@ -76,9 +76,9 @@
       <button id="send" class="btn primary">Ask</button>
       <button id="reset" class="btn" title="Start a new conversation">New</button>
     </div>
-    <p class="chart-note">Answers come from NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars, with
+    <p class="chart-note">Answers come from NCSES HERD Survey public microdata, FY <span data-meta="first_year">2012</span>-<span data-meta="last_year">2024</span>, nominal dollars, with
       institution type from the 2021 Carnegie Classification. Queries are read-only and run in your browser; only your
-      question and the query results are sent to the AI provider you chose.</p>
+      question and the query results (plus any help documents the model reads to answer a question about using the site) are sent to the AI provider you chose.</p>
     </section>
 
     <section id="panel-how" class="panel" role="tabpanel" aria-labelledby="tab-how" hidden>
@@ -90,6 +90,11 @@
           the tables, every measure with its meaning and coverage, the institution types, and rules for answering: dollars are
           in thousands, report readable units, say which measure and years were used, never state a number that was not in the
           results.</li>
+        <li><strong>It can read help documents when you ask for help.</strong> The model starts with only a table of
+          contents of the site's <a href="https://github.com/nate-layman/herd-explorer/tree/main/docs/help">help documents</a>.
+          If you ask how to build a pivot table or chart, how the data were put together, or how the projections were
+          modeled, it asks for the one or two documents it needs, your browser fetches them, and it answers from their
+          text. Each answer lists the documents it read.</li>
         <li><strong>It writes a query.</strong> The model answers your question with SQL in a marked block, for example:
           <pre>SELECT i.name, m.year, m.value / 1000 AS rd_millions
 FROM metrics m JOIN institution_latest i USING (inst_id)
@@ -111,8 +116,8 @@ ORDER BY m.year</pre></li>
 
       <h2>What leaves your browser</h2>
       <ul>
-        <li>Your questions, the description of the data from step 1, and the query results go to the AI provider your key
-          belongs to. The HERD data themselves stay in your browser.</li>
+        <li>Your questions, the description of the data from step 1, the query results, and any help documents the
+          model asks for in step 2 go to the AI provider your key belongs to. The HERD data themselves stay in your browser.</li>
         <li>Your key stays in this browser tab (session storage) and is sent only to its own provider. A key passed in a link
           (<code>ask.html?key=...</code>) is read once and removed from the address bar. The key box and its routing by key
           prefix come from <a href="https://github.com/AI4RA/promptulus">Promptulus</a>: <code>mr2_</code> keys go to University
@@ -124,7 +129,7 @@ ORDER BY m.year</pre></li>
       <ul>
         <li>The model can misread a question or pick the wrong measure. Open <em>Show the SQL</em> and check important numbers
           on the Trends or Compare pages.</li>
-        <li>Answers cover FY 2012 to FY 2024. Questions about the future are pointed to the projections on Trends and Compare.</li>
+        <li>Answers cover FY <span data-meta="first_year">2012</span> to FY <span data-meta="last_year">2024</span>. Questions about the future are pointed to the projections on Trends and Compare.</li>
         <li>Answers depend on the model behind your key; larger models write better queries.</li>
       </ul>
       <p class="chart-note">Code: <a href="https://github.com/nate-layman/herd-explorer/blob/main/docs/ask.html">docs/ask.html</a>
@@ -136,11 +141,13 @@ ORDER BY m.year</pre></li>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.17/dist/purify.min.js"></script>
   <script type="module">
     import { renderLayout } from './js/layout.js';
+    import { meta, fillTemplate } from './js/meta.js';
     import { query } from './js/db.js';
     import { plotly, PALETTE, BASE_LAYOUT, CONFIG } from './js/charts.js';
     import { readKeyFromURL, getKey, setKey, backendName, callModel } from './js/llm.js';
 
     renderLayout('ask.html');
+    const M = await meta;
     const $ = id => document.getElementById(id);
 
     function openTab(name) {
@@ -192,11 +199,34 @@ ORDER BY m.year</pre></li>
       }
     }
 
+    // ── Help docs, read only when the model asks ────────────────────────────
+    // docs/help holds short help documents and a table of contents, with {last_year}-style
+    // placeholders filled from meta.json. The contents go in the system
+    // prompt; for help using the site or questions about methods, the model asks for documents by
+    // name in a ```docs block and gets their text back.
+    const contents = fillTemplate(await fetch('help/contents.md').then(r => r.ok ? r.text() : '').catch(() => ''), M);
+    const HELP_DOCS = new Set([...contents.matchAll(/\]\(([\w-]+\.md)\)/g)].map(m => m[1]));
+    const helpCache = new Map();
+    async function readHelp(name) {
+      if (!helpCache.has(name)) helpCache.set(name, fetch(`help/${name}`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }).then(t => fillTemplate(t, M))
+        .catch(e => { helpCache.delete(name); throw e; }));
+      return helpCache.get(name);
+    }
+    // Unknown names and failed fetches are reported to the model, not fatal
+    async function helpForModel(names) {
+      const parts = await Promise.all(names.map(async n => {
+        if (!HELP_DOCS.has(n)) return `## ${n}\nNo such document. Available: ${[...HELP_DOCS].join(', ')}.`;
+        try { return await readHelp(n); } catch (e) { return `## ${n}\nCould not be loaded (${e.message}).`; }
+      }));
+      return parts.join('\n\n---\n\n');
+    }
+
     // ── What the model knows ────────────────────────────────────────────────
     const catalog = await query('SELECT id, label, category, unit, coverage FROM measure_catalog ORDER BY category, label');
     const measureLabel = new Map(catalog.map(m => [m.id, m.label]));
     const sectors = (await query('SELECT DISTINCT sector FROM institution_latest ORDER BY 1')).map(r => r.sector);
-    const SYSTEM = `You answer questions about the NCSES Higher Education Research and Development (HERD) Survey, FY 2012 to FY 2024, by writing DuckDB SQL that runs in the user's browser.
+    const SYSTEM = `You answer questions about the NCSES Higher Education Research and Development (HERD) Survey, FY ${M.first_year} to FY ${M.last_year}, by writing DuckDB SQL that runs in the user's browser. You also help people use this site, HERD Explorer, and explain how its data and projections were made.
 
 TABLES (DuckDB SQL; views over Parquet):
 - metrics(year INTEGER, inst_id VARCHAR, measure_id VARCHAR, value DOUBLE): one row per institution, year and measure. Dollar values are in THOUSANDS of nominal dollars (multiply by 1000 for dollars). Personnel values are people or FTEs.
@@ -213,12 +243,16 @@ ${catalog.map(m => `${m.id}: ${m.label} [${m.category}]${m.coverage.startsWith('
 RULES
 - Put each query in a fenced block marked sql. Write one query per block, SELECT or WITH only. Join metrics to institution_latest on inst_id for names and groups.
 - Use names with ILIKE for institutions (e.g. name ILIKE '%University of Idaho%'), and check the result is the institution you meant. To match several names, join ILIKE conditions with OR; ILIKE ANY is not supported.
-- National totals are sums over all institutions. Personnel counts exist only for 2022 to 2024.
+- National totals are sums over all institutions. Personnel counts exist only for 2022 to ${M.last_year}.
 - After you see query results, answer in plain language in a few sentences. Report dollars in readable units ($1.2 billion, $45.3 million). Say which years and which measure you used. Never invent numbers that were not in the results; if the data cannot answer the question, say so.
 - If a chart would help, put each chart in its own fenced block marked chart, containing valid JSON: {"type": "line"|"bar"|"scatter", "sql": "<a SELECT>", "x": "<column>", "y": "<column, or a list of columns for one line each>", "series": "<optional column whose values split the data into lines or bars>", "title": "<short title>", "y_label": "<axis label>"}. Use either a list of y columns or series, not both. Keep to 8 lines or fewer. Prefer millions of dollars on charts.
 - Write plainly. Do not use em dashes.
-- The data stop at FY 2024. For questions about the future, say that the Trends and Compare pages show model projections with uncertainty ranges, and that a projection shows where past trends lead if they continue; it does not account for known upcoming changes such as federal budget or policy shifts.
-- Do not give financial, budget, legal or investment advice.`;
+- The data stop at FY ${M.last_year}. For questions about the future, say that the Trends and Compare pages show model projections with uncertainty ranges, and that a projection shows where past trends lead if they continue; it does not account for known upcoming changes such as federal budget or policy shifts.
+- Do not give financial, budget, legal or investment advice.
+- For help using the site (building a pivot table or chart on Explore, comparing institutions, downloads) or questions about how the data were built or the projections modeled, first ask for the help documents you need from the CONTENTS below, usually one or two: reply with only a fenced block marked docs listing one file name per line, and you will get their text. Then answer from that text, without SQL. Name the page and the exact buttons, dropdowns and fields to use, as steps, and link the page with a relative link such as [Explore](explore.html#table), [Chart builder](explore.html#chart), [Compare](compare.html), [About the model](model.html) or [Data & sources](data.html). Only describe controls that appear in the documents; if they do not cover something, say so. Do not request documents for ordinary data questions.
+
+CONTENTS of the help documents:
+${contents}`;
 
     // ── Rendering ───────────────────────────────────────────────────────────
     const fenced = (text, lang) => [...text.matchAll(new RegExp('```' + lang + '\\s*\\n([\\s\\S]*?)```', 'g'))].map(m => m[1].trim());
@@ -344,10 +378,20 @@ RULES
       try {
         let turn = question;
         const ran = [];
+        const read = [];
         let reply = '';
+        // One documents round, which doesn't count against the query rounds
         for (let round = 0; round < MAX_ROUNDS; round++) {
           reply = await callModel(SYSTEM, history, turn);
           history.push({ role: 'user', text: turn }, { role: 'model', text: reply });
+          const wanted = fenced(reply, 'docs').flatMap(b => b.split(/[\s,]+/)).filter(Boolean);
+          if (wanted.length && !read.length) {
+            thinking.innerHTML = 'Reading the site&rsquo;s documentation&hellip;';
+            read.push(...new Set(wanted));
+            turn = `Help documents:\n\n${await helpForModel(read)}\n\nAnswer the original question from these documents.`;
+            round--;
+            continue;
+          }
           const sqls = fenced(reply, 'sql');
           if (!sqls.length) break;
           thinking.innerHTML = 'Running the query in your browser&hellip;';
@@ -359,11 +403,13 @@ RULES
           thinking.innerHTML = 'Reading the results&hellip;';
         }
         thinking.remove();
-        const { charts, text } = takeCharts(reply);
+        const { charts, text } = takeCharts(reply.replace(/```docs\s*\n[\s\S]*?```/g, ''));
         const body = markdown(text || '(No explanation returned.)');
         const queries = ran.map((r, i) => `<details class="sql"><summary>Show the SQL${ran.length > 1 ? ` (${i + 1} of ${ran.length})` : ''}</summary>
             <pre>${esc(r.sql)}</pre>${r.error ? `<p class="sql-error">${esc(r.error)}</p>` : tableHtml(r.rows)}</details>`).join('');
-        const msg = addMessage('model', body + queries +
+        const sources = read.filter(n => HELP_DOCS.has(n));
+        const readNote = sources.length ? `<p class="answer-note">Read: ${sources.map(esc).join(', ')}</p>` : '';
+        const msg = addMessage('model', body + readNote + queries +
           '<p class="answer-note">AI-generated answer from HERD Survey data. Check important numbers before relying on them.</p>');
         for (const spec of charts) {
           const el = document.createElement('div');
@@ -380,10 +426,10 @@ RULES
     }
 
     const PRESETS = [
-      'Which 10 institutions had the most total R&D in FY 2024, and how much has each grown since 2012?',
+      `Which 10 institutions had the most total R&D in FY ${M.last_year}, and how much has each grown since ${M.first_year}?`,
       'How has federal R&D at R2 universities changed since 2012? Show a chart.',
       'Compare University of Idaho, Boise State and Idaho State on NSF funding over time.',
-      'Which states grew institution-funded R&D the fastest from 2012 to 2024?',
+      `Which states grew institution-funded R&D the fastest from ${M.first_year} to ${M.last_year}?`,
       'What share of R&D at HBCUs comes from the federal government, and how has it changed?',
       'How much did universities report in unrecovered indirect costs nationally each year?',
     ];

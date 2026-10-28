@@ -6,6 +6,9 @@
 # published tables, and writes one DuckDB database for the site:
 #   docs/data/herd.duckdb
 #
+# It also writes docs/data/meta.json, the years and labels the site's text reads.
+# Years and the NCSES publication come from pipeline/release.yml.
+#
 # Usage: Rscript pipeline/build.R
 
 suppressPackageStartupMessages({
@@ -14,17 +17,20 @@ suppressPackageStartupMessages({
   library(readxl)
 })
 
-first_year <- 2012L
-last_year <- 2024L
+root <- getwd()
+if (!file.exists(file.path(root, "pipeline", "build.R"))) stop("run from the repository root: Rscript pipeline/build.R")
+source(file.path(root, "pipeline", "release.R"))
+release <- read_release(root)
+first_year <- release$first_year
+last_year <- release$last_year
 microdata_url <- "https://ncses.nsf.gov/821/assets/0/files/higher_education_r_and_d_%d%s.zip"
 microdata_page <- "https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development"
 # The latest release's data tables carry the published national totals
-tables_url <- "https://ncses.nsf.gov/pubs/nsf26304/assets/data-tables/nsf26304-data-tables-tables-excels.zip"
-tables_page <- "https://ncses.nsf.gov/pubs/nsf26304"
+tables_url <- release$tables$zip
+tables_page <- release$tables$page
+tables_label <- release$tables$label
 cogr_page <- "https://www.cogr.edu/changes-federal-research-requirements-1991"
 
-root <- getwd()
-if (!file.exists(file.path(root, "pipeline", "build.R"))) stop("run from the repository root: Rscript pipeline/build.R")
 raw_dir <- file.path(root, "pipeline", "raw")
 out_dir <- file.path(root, "docs", "data")
 db_path <- file.path(out_dir, "herd.duckdb")
@@ -60,8 +66,8 @@ files$url <- sprintf(microdata_url, files$year, files$suffix)
 files$csv <- vapply(seq_len(nrow(files)), function(i) {
   csv_from_zip(fetch(files$url[i], file.path(raw_dir, basename(files$url[i]))))
 }, "")
-tables_dir <- file.path(raw_dir, "nsf26304-tables")
-unzip(fetch(tables_url, file.path(raw_dir, "nsf26304-tables.zip")), exdir = tables_dir, overwrite = TRUE)
+tables_dir <- file.path(raw_dir, paste0(release$tables$publication, "-tables"))
+unzip(fetch(tables_url, file.path(raw_dir, paste0(release$tables$publication, "-tables.zip"))), exdir = tables_dir, overwrite = TRUE)
 
 if (file.exists(db_path)) invisible(file.remove(db_path))
 con <- dbConnect(duckdb(), db_path)
@@ -134,10 +140,18 @@ if (dupes > 0) stop(dupes, " institution-years have conflicting attributes; insp
 # --- NCSES published national totals -------------------------------------------
 # Tables 2 and 12 carry the split of institution funds and of indirect costs that
 # NCSES does not release per institution (HERD data user guide, section 1.1.4).
-table_path <- function(n) list.files(tables_dir, sprintf("tab%03d\\.xlsx$", n), full.names = TRUE, recursive = TRUE)
+table_path <- function(n) {
+  f <- list.files(tables_dir, sprintf("tab%03d\\.xlsx$", n), full.names = TRUE, recursive = TRUE)
+  if (length(f) != 1) stop(sprintf("expected one Table %d workbook in %s, found %d; check tables in release.yml", n, basename(tables_url), length(f)))
+  f
+}
+funds_table <- as.integer(release$tables$source_of_funds)
+cost_table <- as.integer(release$tables$type_of_cost)
+funds_source <- sprintf("%s Table %d", tables_label, funds_table)
+cost_source <- sprintf("%s Table %d", tables_label, cost_table)
 
 read_table2 <- function() {
-  x <- read_excel(table_path(2), col_names = FALSE, .name_repair = "minimal")
+  x <- read_excel(table_path(funds_table), col_names = FALSE, .name_repair = "minimal")
   start <- which(x[[1]] == "All institutions")[1] + 1
   stop_at <- which(x[[1]] == "Short form institutionsa" | grepl("^Short form", x[[1]]))[1] - 1
   x <- x[start:stop_at, ]
@@ -146,19 +160,19 @@ read_table2 <- function() {
                 "Institution funds: unrecovered indirect costs", "Business", "Nonprofit organizations",
                 "All other sources")
   do.call(rbind, lapply(seq_along(measures), function(j) data.frame(
-    source_table = "NSF 26-304 Table 2", population = "All institutions", year = as.integer(x[[1]]),
+    source_table = funds_source, population = "All institutions", year = as.integer(x[[1]]),
     dimension = "Source of funds", measure = measures[j], value = as.numeric(x[[j + 1]])
   )))
 }
 
 read_table12 <- function() {
-  x <- read_excel(table_path(12), col_names = FALSE, .name_repair = "minimal")
+  x <- read_excel(table_path(cost_table), col_names = FALSE, .name_repair = "minimal")
   years <- as.integer(unlist(x[4, -1]))
   start <- which(x[[1]] == "All institutions")[1] + 1
   stop_at <- which(x[[1]] == "Doctorate")[1] - 1
   x <- x[start:stop_at, ]
   do.call(rbind, lapply(seq_len(nrow(x)), function(i) data.frame(
-    source_table = "NSF 26-304 Table 12", population = "Standard-form institutions", year = years,
+    source_table = cost_source, population = "Standard-form institutions", year = years,
     dimension = "Type of cost", measure = x[[1]][i], value = as.numeric(unlist(x[i, -1]))
   )))
 }
@@ -172,17 +186,17 @@ published$unit <- "thousands_usd"
 dbWriteTable(con, "national_published", published)
 
 # --- COGR federal research requirements ----------------------------------------
-# COGR publishes the cumulative count only as data labels on its Figure 1, not as a table
-cogr <- data.frame(
-  year = 1991:2024,
-  cumulative_requirements = c(1, 2, 2, 5, 10, 11, 11, 11, 13, 16, 19, 22, 25, 29, 37, 39, 42, 51, 57,
-                              69, 73, 82, 97, 102, 109, 119, 121, 129, 141, 157, 180, 211, 245, 270),
-  source_note = "Data labels on COGR Figure 1, Changes in Federal Research Requirements Since 1991 (updated January 2025)"
-)
+# COGR publishes the cumulative count only as data labels on its Figure 1, not as a table,
+# so the labels are typed into pipeline/cogr_requirements.csv
+cogr <- read.csv(file.path(root, "pipeline", "cogr_requirements.csv"))
+cogr$year <- as.integer(cogr$year)
+cogr$source_note <- sprintf("Data labels on COGR Figure 1, Changes in Federal Research Requirements Since 1991 (updated %s)", release$cogr$updated)
+if (max(cogr$year) < last_year)
+  warning(sprintf("cogr_requirements.csv ends in %d, before %d; the Trends page's workload chart ends there too", max(cogr$year), last_year), call. = FALSE)
 dbWriteTable(con, "cogr_requirements", cogr)
 
 # --- Carnegie Classification 2021 ----------------------------------------------
-# Joined on IPEDS unit ID. The 2021 edition is held fixed across 2012-2024 so a
+# Joined on IPEDS unit ID. The 2021 edition is held fixed across all years so a
 # group means the same institutions in every year. R1 and R2 status depends partly
 # on R&D spending, so it is a grouping label here, not a predictor that moves.
 carnegie_url <- "https://carnegieclassifications.acenet.edu/wp-content/uploads/2023/03/CCIHE2021-PublicData.xlsx"
@@ -245,9 +259,9 @@ bad <- dbGetQuery(con, "SELECT o.inst_id, o.herd_name FROM carnegie_overrides o
 if (nrow(bad)) stop("crosswalk IDs not found in Carnegie 2021: ", paste(bad$herd_name, collapse = "; "))
 unclassified <- dbGetQuery(con, "
   SELECT count(DISTINCT g.inst_id) AS n, coalesce(sum(f.value), 0) / 1e3 AS rd_m
-  FROM institution_groups g LEFT JOIN facts f ON f.inst_id = g.inst_id AND f.question_no = '01.g' AND f.year = 2024
-  WHERE g.sector = 'Not classified'")
-message(sprintf("Not classified: %d institutions, $%.0fM of FY 2024 R&D", unclassified$n, unclassified$rd_m))
+  FROM institution_groups g LEFT JOIN facts f ON f.inst_id = g.inst_id AND f.question_no = '01.g' AND f.year = %d
+  WHERE g.sector = 'Not classified'" |> sprintf(last_year))
+message(sprintf("Not classified: %d institutions, $%.0fM of FY %d R&D", unclassified$n, unclassified$rd_m, last_year))
 
 # --- Provenance ----------------------------------------------------------------
 sources <- rbind(
@@ -255,10 +269,10 @@ sources <- rbind(
              title = sprintf("HERD Survey public microdata, FY %d-%d, standard and short form", first_year, last_year),
              url = microdata_page, files = paste(basename(files$url), collapse = "; ")),
   data.frame(table_name = "national_published", publisher = "NCSES, U.S. National Science Foundation",
-             title = "HERD Survey FY 2024 data tables (NSF 26-304), Tables 2 and 12",
+             title = sprintf("HERD Survey FY %d data tables (%s), Tables %d and %d", last_year, tables_label, funds_table, cost_table),
              url = tables_page, files = basename(tables_url)),
   data.frame(table_name = "cogr_requirements", publisher = "Council on Governmental Relations (COGR)",
-             title = "Changes in Federal Research Requirements Since 1991, Figure 1 (updated January 2025)",
+             title = sprintf("Changes in Federal Research Requirements Since 1991, Figure 1 (updated %s)", release$cogr$updated),
              url = cogr_page, files = "Figure 1 data labels, entered by hand"),
   data.frame(table_name = "carnegie_2021, institution_groups", publisher = "American Council on Education, Carnegie Classification",
              title = "Carnegie Classification of Institutions of Higher Education, 2021 update public data file",
@@ -267,9 +281,17 @@ sources <- rbind(
 sources$built_on <- as.character(Sys.Date())
 dbWriteTable(con, "sources", sources)
 
-validate(con)
+# Every year in release.yml must be in the microdata, and no others
+got <- dbGetQuery(con, "SELECT DISTINCT year FROM facts ORDER BY year")$year
+if (!identical(as.integer(got), first_year:last_year))
+  stop("microdata years ", paste(range(got), collapse = "-"), " do not match release.yml ", first_year, "-", last_year)
+
+validate(con, funds_source, cost_source)
 build_metrics(con)
-build_downloads(con, out_dir)
+build_downloads(con, out_dir, first_year, last_year)
+jsonlite::write_json(c(site_meta(release), built_on = as.character(Sys.Date())),
+                     file.path(out_dir, "meta.json"), auto_unbox = TRUE, pretty = TRUE)
+message("wrote meta.json")
 
 # Parquet copies for downloads and for anyone who prefers files to a database
 for (t in c("facts", "metrics", "measure_catalog", "institutions", "institution_groups", "national_published", "cogr_requirements", "sources")) {

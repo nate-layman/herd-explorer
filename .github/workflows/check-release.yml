@@ -1,0 +1,46 @@
+# Once a month, check whether NCSES has posted the next HERD survey year, and open an
+# issue with the steps in RELEASING.md if it has (one issue per year).
+name: Check for a new HERD release
+
+on:
+  schedule:
+    - cron: '0 15 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+
+      - name: Install yaml
+        run: Rscript -e 'install.packages("yaml", repos = "https://packagemanager.posit.co/cran/__linux__/noble/2026-10-01")'
+
+      - name: Check NCSES
+        id: check
+        run: Rscript pipeline/check_release.R --github
+
+      - name: Open an issue
+        if: steps.check.outputs.new_year != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          YEAR: ${{ steps.check.outputs.new_year }}
+        run: |
+          title="HERD FY $YEAR data are out"
+          if gh issue list --state all --search "\"$title\" in:title" --json number --jq 'length' | grep -qv '^0$'; then
+            echo "An issue for FY $YEAR already exists"; exit 0
+          fi
+          repo="${{ github.server_url }}/${{ github.repository }}"
+          printf '%s\n\n%s\n' \
+            "NCSES has posted the FY $YEAR HERD microdata." \
+            "Follow [RELEASING.md]($repo/blob/main/RELEASING.md): update \`pipeline/release.yml\`, then run the [Refresh data]($repo/actions/workflows/refresh.yml) workflow and review its pull request." \
+            > body.md
+          gh issue create --title "$title" --body-file body.md

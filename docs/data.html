@@ -32,10 +32,11 @@
 
     <h2>How the data were put together</h2>
     <ul>
-      <li><strong>Years.</strong> FY 2012 to FY 2024. All of these years use the same survey design, introduced in FY 2010,
+      <li><strong>Years.</strong> FY <span data-meta="first_year">2012</span> to FY <span data-meta="last_year">2024</span>. All of these years use the same survey design, introduced in FY 2010,
         and include the short-form survey for institutions with less than $1 million in R&amp;D, so national totals are complete.</li>
-      <li><strong>Checked against NCSES.</strong> Each build compares 195 national totals with the tables NCSES publishes
-        (<a href="https://ncses.nsf.gov/pubs/nsf26304">NSF 26-304</a>, Tables 2 and 12). All match exactly; the build stops if any do not.</li>
+      <li><strong>Checked against NCSES.</strong> Each build compares 15 national totals in every year with the tables NCSES
+        publishes (<a href="https://ncses.nsf.gov/pubs/nsf26304" data-meta-href="tables_page"><span data-meta="tables_publication">NSF 26-304</span></a>,
+        Tables 2 and 12). All match exactly; the build stops if any do not.</li>
       <li><strong>Two survey forms.</strong> Institutions with $1 million or more in R&amp;D answer the standard form; smaller
         ones answer a short form with fewer questions. Measures available only on the standard form are labeled that way
         below, and their national totals leave out short-form institutions (about 0.1 percent of R&amp;D).</li>
@@ -48,7 +49,7 @@
         offices, research institutes) are matched by a <a id="crosswalk" href="#">hand-checked crosswalk</a>. Seven independent
         research institutes and three system offices, which Carnegie does not classify, are labeled by HERD Explorer.</li>
       <li><strong>Imputed values.</strong> NCSES imputes some values for nonresponse; the survey-values download keeps NCSES's
-        status code (i = imputed, n = not available) for every value.</li>
+        status code for every value (i = imputed by NCSES). HERD Explorer does not impute or fill in any values.</li>
       <li><strong>Dollars</strong> are nominal (not adjusted for inflation).</li>
     </ul>
 

@@ -1,13 +1,14 @@
 # Projection model for HERD Explorer, run once a year after the data build.
 #
-# For each headline measure, fits a hierarchical GAM on log dollars:
-#   log(value) ~ sector + s(year, by = sector, bs = "gp")      sector trends, Gaussian process smooths
-#              + s(state, bs = "re")                          state random intercepts
-#              + s(inst, bs = "re") + s(inst, year_c, bs = "re")  institution random intercepts and slopes
-# with AR(1) residuals within institution. Projections are simulated: coefficient draws
-# from the posterior (shared across institutions within a draw, so sums over any group
-# keep the shared uncertainty) plus AR(1) residual paths that start from each
-# institution's last observed residual.
+# Backtests three candidates on total R&D (refit at several past cutoffs, score the next
+# three years by CRPS): a hierarchical growth model, a hierarchical GAM on levels, and a
+# naive own-growth baseline. The best-scoring model is then fit to every dollar measure and
+# simulated. The growth model has won every backtest so far:
+#   dlog ~ sector + s(state, re) + s(inst, re) + s(year, re) + s(year x sector, re)
+# with size-dependent noise and new shared year shocks simulated for future years, so sums
+# over any group keep the shared uncertainty. See fit_growth() and simulate_growth().
+#
+# Horizon and backtest cutoffs follow pipeline/release.yml.
 #
 # Writes to model/output/ (published to Hugging Face by model/publish.sh):
 #   <measure>.parquet   inst_id, year, draw, value (thousands of dollars), 200 draws per institution-year
@@ -26,13 +27,16 @@ suppressPackageStartupMessages({
 set.seed(20261027)
 # Every dollar measure; personnel counts start in FY 2022, too few years to model
 measures <- NULL  # filled from measure_catalog once the database is open
-horizon <- 5L          # years projected past the last year of data
+horizon <- NULL        # years projected past the last year of data, from release.yml
 n_draws <- 200L        # draws stored per institution-year
 gp_range <- 3           # Gaussian process range in years (3, 5 and 8 scored within 0.001 CRPS in backtests)
 min_years <- 4L        # institutions need this many positive years to be modeled
 
 root <- getwd()
 if (!file.exists(file.path(root, "model", "fit.R"))) stop("run from the repository root: Rscript model/fit.R")
+source(file.path(root, "pipeline", "release.R"))
+release <- read_release(root)
+horizon <- release$projection$horizon
 # Published to Hugging Face by model/publish.sh, not committed to git
 out_dir <- file.path(root, "model", "output")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
@@ -40,6 +44,8 @@ dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 con <- dbConnect(duckdb(), file.path(root, "docs", "data", "herd.duckdb"), read_only = TRUE)
 on.exit(dbDisconnect(con, shutdown = TRUE), add = TRUE)
 measures <- dbGetQuery(con, "SELECT id FROM measure_catalog WHERE unit = 'thousands_usd' ORDER BY id")$id
+data_last <- dbGetQuery(con, "SELECT max(year) AS y FROM metrics")$y
+if (data_last != release$last_year) stop("the database ends in ", data_last, " but release.yml says ", release$last_year, "; run Rscript pipeline/build.R first")
 
 # Small groups pool into "Other" so every sector curve has enough institutions behind it
 inst <- dbGetQuery(con, "
@@ -205,7 +211,7 @@ summarise_bt <- function(x) {
 
 # --- Backtest on total R&D: compare models by CRPS -----------------------------
 d_all <- load_measure("source_all_r_d")
-cutoffs <- 2018:2021
+cutoffs <- release$projection$cutoffs
 labels <- c(hgam = "Hierarchical GAM on levels (GP smooths, AR(1))",
             growth = "Hierarchical growth (pooled drift, shared year shocks)",
             naive = "Naive: own average growth")

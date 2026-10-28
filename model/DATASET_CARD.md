@@ -12,7 +12,7 @@ size_categories:
 
 # HERD Explorer projections
 
-Simulated projections of research and development spending at U.S. colleges and universities, FY 2025 to FY 2029, for every dollar measure in [HERD Explorer](https://nate-layman.github.io/herd-explorer/). The site reads these files directly in the browser.
+Simulated projections of research and development spending at U.S. colleges and universities, FY {{projection_first_year}} to FY {{projection_last_year}}, for every dollar measure in [HERD Explorer](https://nate-layman.github.io/herd-explorer/). The site reads these files directly in the browser.
 
 **A projection shows where past trends lead if they continue.** It does not account for known upcoming changes, such as federal budget or policy shifts, and may not reflect what actually happens. Nor can it see survey revisions or an institution's own plans.
 
@@ -32,7 +32,7 @@ A hierarchical growth model fit with the R package mgcv: year-to-year growth in 
 
 ## Source data
 
-NCSES [Higher Education Research and Development Survey](https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development) public microdata, FY 2012 to FY 2024.
+NCSES [Higher Education Research and Development Survey](https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development) public microdata, FY {{first_year}} to FY {{last_year}}.
 
 ## Disclaimer
 

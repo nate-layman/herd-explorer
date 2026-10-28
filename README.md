@@ -41,8 +41,11 @@ Then open http://localhost:4173
 ## Rebuild the data
 
 ```bash
-Rscript pipeline/build.R
+make packages   # once
+make all        # download, build and check the data, fit the projections, run the publish checks
 ```
+
+Each new survey year needs one edit to `pipeline/release.yml` and two workflow runs; see [RELEASING.md](RELEASING.md).
 
 ## Built with
 
@@ -56,7 +59,7 @@ Rscript pipeline/build.R
 
 ## Ask the data
 
-The Ask page lets you ask questions in plain language. Bring your own key: a University of Idaho MindRouter key (`mr2_...`), or an Anthropic, OpenAI or Google Gemini key. Paste it on the page, or open the page from a link like `ask.html?key=...`; the key is read once, removed from the address bar, and kept only in that browser tab. The model writes SQL that runs read-only in your browser; only your question and the query results go to the provider you chose.
+The Ask page lets you ask questions in plain language. Bring your own key: a University of Idaho MindRouter key (`mr2_...`), or an Anthropic, OpenAI or Google Gemini key. Paste it on the page, or open the page from a link like `ask.html?key=...`; the key is read once, removed from the address bar, and kept only in that browser tab. The model writes SQL that runs read-only in your browser; only your question and the query results go to the provider you chose. When you ask for help using the site or about the methods, the model starts from a table of contents and reads only the help documents it needs from [`docs/help/`](docs/help/), which are then sent too.
 
 ## License
 

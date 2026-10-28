@@ -11,6 +11,7 @@ Browser-based explorer for the NCSES HERD Survey, FY 2012 to FY 2024. Static sit
 ## Layout
 
 - `docs/` is the site: vanilla ES modules, libraries from public CDNs with pinned versions, no build step (same pattern as Data Crawler Carl).
+- `docs/help/` holds the help documents the Ask page's model reads on request, with `contents.md` as their table of contents (the only part sent up front). When you change what a page does, update its help document; when you add a document, add a line to `contents.md`.
 - `docs/data/` holds the built database (`herd.duckdb`) and Parquet copies of each table. Do not edit these by hand; rebuild them.
 - `pipeline/` builds the data in R. `pipeline/raw/` is downloaded source data and is gitignored.
 - `pipeline/carnegie_overrides.csv` is a hand-checked crosswalk for HERD reporting units without a usable IPEDS ID. Add a row, with a note, when a new unit appears.
@@ -19,8 +20,10 @@ Browser-based explorer for the NCSES HERD Survey, FY 2012 to FY 2024. Static sit
 ## Rebuild the data
 
 ```bash
-Rscript pipeline/build.R
+make all        # build.R, fit.R, and publish.sh --dry-run
 ```
+
+Years, the NCSES tables publication and the projection horizon live in `pipeline/release.yml`; nothing else should hardcode them. Site text reads years from `docs/data/meta.json` (written by the build) through `docs/js/meta.js`, and help docs use `{last_year}`-style placeholders. A new survey year is a `release.yml` edit plus the Refresh data workflow; see RELEASING.md.
 
 The build fails if any national rollup differs from the totals NCSES publishes. Do not loosen that check to make a build pass; find the cause.
 

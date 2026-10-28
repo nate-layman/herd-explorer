@@ -4,20 +4,22 @@
 # Table 12: R&D expenditures by type of cost, standard-form institutions.
 # Both are in thousands of dollars, the same unit as the microdata.
 
-# Published measure -> questionnaire numbers that sum to it, and the forms they cover
+# Published measure -> questionnaire numbers that sum to it, and the forms they cover.
+# source_table is filled in from release.yml when validate() runs.
 checks <- rbind(
   data.frame(measure = c("All R&D", "Federal government", "State and local government", "Institution funds",
                          "Business", "Nonprofit organizations", "All other sources"),
              questions = c("01.g", "01.a", "01.b", "01.e", "01.c", "01.d", "01.f"),
-             forms = "standard,short", source_table = "NSF 26-304 Table 2"),
+             forms = "standard,short", source_table = "funds"),
   data.frame(measure = c("All R&D", "Direct costs", "Salaries, wages, and fringe benefits", "Software",
                          "Capitalized equipment", "Passed through to subrecipients", "Other direct costs",
                          "Indirect costs"),
              questions = c("01.g", "12.a,12.b1,12.b2,12.c,12.d,12.e", "12.a", "12.b1,12.b2", "12.c", "12.d", "12.e", "12.f"),
-             forms = "standard", source_table = "NSF 26-304 Table 12")
+             forms = "standard", source_table = "cost")
 )
 
-validate <- function(con) {
+validate <- function(con, funds_source, cost_source) {
+  checks$source_table <- ifelse(checks$source_table == "funds", funds_source, cost_source)
   years <- dbGetQuery(con, "SELECT DISTINCT year FROM facts")$year
   problems <- character()
   checked <- 0L

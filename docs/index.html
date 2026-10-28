@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HERD Explorer: Trends</title>
-  <meta name="description" content="Explore NCSES HERD Survey research and development spending at U.S. colleges and universities, FY 2012 to 2024." />
+  <meta name="description" content="Explore NCSES HERD Survey research and development spending at U.S. colleges and universities, FY 2012 to the latest survey year." />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
   <main>
     <h1>Trends</h1>
-    <p class="lede">University research and development spending from FY 2012 to FY 2024, nationally or split by group.
+    <p class="lede">University research and development spending from FY <span data-meta="first_year">2012</span> to FY <span data-meta="last_year">2024</span>, nationally or split by group.
       Pick a measure, then choose how to slice it.</p>
 
     <div class="controls">
@@ -31,11 +31,11 @@
       <label>Show as
         <select id="mode">
           <option value="value">Amount</option>
-          <option value="index">Index (FY 2012 = 100)</option>
+          <option value="index" data-meta-text="Index (FY {first_year} = 100)">Index (FY 2012 = 100)</option>
           <option value="share">Share of national total</option>
         </select>
       </label>
-      <label class="inline"><span><input type="checkbox" id="project" /> Show projection to FY 2029</span></label>
+      <label class="inline"><span><input type="checkbox" id="project" /> Show projection to FY <span data-meta="projection_last_year">2029</span></span></label>
       <span id="proj-flag" class="proj-flag" role="status" hidden></span>
     </div>
 
@@ -48,19 +48,21 @@
       recover for each dollar of direct research has fallen.</p>
     <div id="workload" class="chart"></div>
     <p class="chart-note">Sources: COGR, <a href="https://www.cogr.edu/changes-federal-research-requirements-1991">Changes in Federal
-      Research Requirements Since 1991</a>, Figure 1 (updated Jan. 2025), data labels entered by hand. NCSES, HERD Survey FY 2024
-      data tables (<a href="https://ncses.nsf.gov/pubs/nsf26304">NSF 26-304</a>), Table 12, standard-form institutions.
+      Research Requirements Since 1991</a>, Figure 1 (updated <span data-meta="cogr_updated">January 2025</span>), data labels entered by hand. NCSES, HERD Survey FY <span data-meta="last_year">2024</span>
+      data tables (<a href="https://ncses.nsf.gov/pubs/nsf26304" data-meta-href="tables_page"><span data-meta="tables_publication">NSF 26-304</span></a>), Table 12, standard-form institutions.
       Recovery figures are national only; NCSES does not release them by institution.</p>
   </main>
 
   <script type="module">
     import { renderLayout } from './js/layout.js';
+    import { meta } from './js/meta.js';
     import { query, lit } from './js/db.js';
     import { plotly, PALETTE, OTHER, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
     import { updateToggle, groupBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
     renderLayout('index.html');
+    const M = await meta;
 
     const $ = id => document.getElementById(id);
     const SPLIT_LABEL = { msi: ['Minority-serving', 'Not minority-serving'], hbcu: ['HBCU', 'Not an HBCU'],
@@ -135,7 +137,7 @@
       $('proj-note').hidden = !showProj;
       $('proj-note').innerHTML = `${DISCLAIMER_SHORT} Shaded bands show the 80% and 90% ranges. <a href="model.html">How projections are made</a>.`;
 
-      const yTitle = mode === 'index' ? 'Index, FY 2012 = 100' : mode === 'share' ? 'Percent of national total' : unitAxis(m.unit);
+      const yTitle = mode === 'index' ? `Index, FY ${M.first_year} = 100` : mode === 'share' ? 'Percent of national total' : unitAxis(m.unit);
       const Plotly = await plotly();
       if (!$('trend').data) $('trend').innerHTML = '';
       Plotly.react('trend', traces, {
@@ -144,7 +146,7 @@
                  ticksuffix: mode === 'share' ? '%' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('trend-note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
-        `Source: NCSES HERD Survey public microdata, FY 2012-2024. Nominal dollars.` +
+        `Source: NCSES HERD Survey public microdata, FY ${M.first_year}-${M.last_year}. Nominal dollars.` +
         (split === 'sector' ? ' Institution type from the 2021 Carnegie Classification.' : '');
     }
 
@@ -154,7 +156,7 @@
           SELECT year,
                  max(value) FILTER (WHERE measure = 'Indirect costs: recovered') /
                  max(value) FILTER (WHERE measure = 'Direct costs') AS rate
-          FROM national_published WHERE source_table = 'NSF 26-304 Table 12' GROUP BY year)
+          FROM national_published WHERE dimension = 'Type of cost' GROUP BY year)
         SELECT c.year, c.cumulative_requirements AS reqs, rec.rate
         FROM cogr_requirements c LEFT JOIN rec USING (year)
         WHERE c.year >= 2010 ORDER BY c.year`);

@@ -1,0 +1,49 @@
+# Refit and upload the projections to Hugging Face when new data lands on main.
+# The fit is seeded, so it reproduces the draws checked in the refresh pull request.
+# Needs a repository secret HF_TOKEN: a Hugging Face token with write access to
+# n8layman/herd-explorer-projections.
+name: Publish projections
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/data/meta.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  R_REPOS: https://packagemanager.posit.co/cran/__linux__/noble/2026-10-01
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+
+      - name: Install R packages
+        run: make packages
+
+      - name: Install the Hugging Face CLI
+        run: pip install --quiet huggingface_hub
+
+      - name: Backtest, fit and simulate projections
+        run: make model
+
+      - name: Check and upload
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then echo "::error::Add a repository secret HF_TOKEN to publish"; exit 1; fi
+          make publish

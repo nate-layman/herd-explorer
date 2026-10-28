@@ -3,10 +3,10 @@
 #   herd_explorer_survey_values.csv.zip  every reported survey value, long format
 # Each carries the README text and the disclaimer.
 
-download_readme <- function(built_on) paste(
+download_readme <- function(built_on, first_year, last_year) paste(
   "HERD Explorer data download",
   "",
-  "Source: NCSES Higher Education Research and Development (HERD) Survey public microdata, FY 2012-2024,",
+  sprintf("Source: NCSES Higher Education Research and Development (HERD) Survey public microdata, FY %d-%d,", first_year, last_year),
   "https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development",
   "Institution type (sector): Carnegie Classification of Institutions of Higher Education, 2021 update.",
   "Dollar values are in thousands of nominal dollars. Personnel values are people or full-time equivalents.",
@@ -19,7 +19,7 @@ download_readme <- function(built_on) paste(
   "official NCSES tables before relying on them. Report errors at https://github.com/nate-layman/herd-explorer/issues",
   sep = "\n")
 
-build_downloads <- function(con, out_dir) {
+build_downloads <- function(con, out_dir, first_year, last_year) {
   dl <- file.path(out_dir, "downloads")
   dir.create(dl, showWarnings = FALSE)
   catalog <- dbGetQuery(con, "SELECT * FROM measure_catalog ORDER BY category, label")
@@ -30,7 +30,7 @@ build_downloads <- function(con, out_dir) {
            g.msi, l.hbcu, l.medical_school, g.land_grant, ", cols, "
     FROM metrics m JOIN latest l USING (inst_id) JOIN institution_groups g USING (inst_id)
     GROUP BY ALL ORDER BY institution, year"))
-  readme <- download_readme(as.character(Sys.Date()))
+  readme <- download_readme(as.character(Sys.Date()), first_year, last_year)
 
   write.csv(wide, file.path(dl, "herd_explorer_wide.csv"), row.names = FALSE, na = "")
   writeLines(readme, file.path(dl, "README.txt"))

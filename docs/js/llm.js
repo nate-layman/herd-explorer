@@ -89,7 +89,8 @@ async function anthropic(key, systemPrompt, history, message) {
     response = await client.beta.messages.create({
       model: ANTHROPIC_MODEL,
       max_tokens: 8000,
-      system: systemPrompt,
+      // The system prompt (schema and rules) is the same every round; cache it
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages,
       // Writing SQL over a documented schema needs little deliberation; low effort keeps replies quick and cheap
       output_config: { effort: 'low' },
