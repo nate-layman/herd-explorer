@@ -19,6 +19,19 @@
     .presets button { font: inherit; font-size: 0.85rem; padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
     .presets button:hover { border-color: var(--accent); }
     .presets button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #builder { margin-bottom: 0.6rem; }
+    #builder select { min-width: 9rem; }
+    #builder button { font: inherit; font-size: 0.85rem; padding: 0.3rem 0.75rem; border-radius: 0.3rem; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+    #builder button:hover { border-color: var(--accent); }
+    #howto { max-width: 46rem; border: 1px solid var(--line); border-radius: 0.5rem; padding: 1.2rem 1.5rem; color: var(--ink); line-height: 1.5; }
+    #howto::backdrop { background: rgb(0 0 0 / 0.35); }
+    #howto h2 { margin-top: 0; }
+    #howto h3 { font-size: 1rem; margin: 1.2rem 0 0.3rem; }
+    #howto ol, #howto ul { padding-left: 1.3rem; margin: 0.3rem 0; }
+    #howto li { margin: 0.25rem 0; }
+    #howto .recipe button { font: inherit; font-size: 0.8rem; padding: 0.1rem 0.6rem; margin-left: 0.4rem; border-radius: 999px; border: 1px solid var(--accent); background: #fff; color: var(--accent); cursor: pointer; }
+    .presets button.help { border-style: dashed; }
+    #howto .close { float: right; font: inherit; font-size: 1.4rem; line-height: 1; border: none; background: none; cursor: pointer; color: var(--muted); }
     perspective-viewer {
       height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; overflow: hidden;
       /* Match the rest of the site instead of Perspective's monospace Pro theme */
@@ -50,30 +63,89 @@
     </div>
 
     <section id="panel-table" class="panel" role="tabpanel" aria-labelledby="tab-table">
-      <div class="presets" id="presets">
-        <span>Quick views:</span>
-        <button data-view="sector" aria-pressed="true">Total R&amp;D by institution type</button>
-        <button data-view="state">By state</button>
-        <button data-view="institutions">Top institutions</button>
-        <button data-view="agency">Federal R&amp;D by agency</button>
-        <button data-view="field">By field of research</button>
-        <button data-view="chart">Chart: funding sources over time</button>
-        <button data-view="raw">Raw data</button>
+      <div id="presets">
+        <div class="presets">
+          <span>Quick views:</span>
+          <button data-view="sector" aria-pressed="true">Total R&amp;D by institution type</button>
+          <button data-view="state">By state</button>
+          <button data-view="institutions">Top institutions</button>
+          <button data-view="agency">Federal R&amp;D by agency</button>
+          <button data-view="field">By field of research</button>
+          <button data-view="raw">Raw data</button>
+        </div>
+      </div>
+      <div class="controls" id="builder">
+        <label>Rows <select id="g0"></select></label>
+        <label>then by <select id="g1"></select></label>
+        <label>then by <select id="g2"></select></label>
+        <label>Columns <select id="s0"></select></label>
+        <label>Measure <select id="m"></select></label>
+        <button id="more">More settings</button>
+        <button class="help">How to build your own</button>
       </div>
       <perspective-viewer id="viewer"></perspective-viewer>
       <p id="table-status" class="status">Loading the database and the table&hellip;</p>
-      <p class="chart-note">Amounts are in dollars (personnel in people or full-time equivalents). Click the settings button
-        at the top right of the table to group by any field, split columns, filter, switch to a chart, or export the current
-        view as CSV. Table: <a href="https://github.com/perspective-dev/perspective">Perspective</a> (Apache 2.0).</p>
+      <p class="chart-note">Amounts are in dollars (personnel in people or full-time equivalents). Start from a quick
+        view, or pick rows, columns and a measure to build your own (see <strong>How to build your own</strong>). <strong>More settings</strong> opens the full panel:
+        more levels, more filters, sorting, and CSV export of the current view. Table: <a href="https://github.com/perspective-dev/perspective">Perspective</a> (Apache 2.0).</p>
     </section>
 
     <section id="panel-chart" class="panel" role="tabpanel" aria-labelledby="tab-chart" hidden>
+      <div class="presets" id="gw-examples">
+        <span>Examples:</span>
+        <button data-chart="0" aria-pressed="true">R&amp;D by institution type</button>
+        <button data-chart="1">NIH funding by institution type</button>
+        <button data-chart="2">States, FY 2024</button>
+        <button data-chart="3">Federal vs. business funding, FY 2024</button>
+        <button data-chart="4">Start your own</button>
+        <button class="help">How to build your own</button>
+      </div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
-        column, in thousands of dollars (personnel in people). Try <em>year</em> on the x-axis, a measure on the y-axis, and
-        <em>sector</em> or <em>state</em> on color.</p>
+        column, in thousands of dollars (personnel in people). Open an example and change it, or start your own: try
+        <em>year</em> on the x-axis, a measure on the y-axis, and <em>sector</em> or <em>state</em> on color.</p>
       <div id="gw"><p class="status" style="padding:1rem">Loading the chart builder&hellip;</p></div>
       <p class="chart-note">Chart builder: <a href="https://github.com/Kanaries/graphic-walker">Graphic Walker</a> (Apache 2.0).</p>
     </section>
+
+    <dialog id="howto" aria-labelledby="howto-title">
+      <button class="close" aria-label="Close">&times;</button>
+      <h2 id="howto-title">How to build your own</h2>
+      <h3>Table tab</h3>
+      <p>Every stored row is one institution, one fiscal year and one measure. The table adds rows up, so set it up in
+        this order:</p>
+      <ol>
+        <li><strong>Measure first.</strong> Pick one measure, such as All R&amp;D or Department of Energy. Adding up rows
+          from different measures counts the same dollars twice. To compare several measures, pick
+          <em>Every Federal agency measure</em> (or every field) and put <em>measure</em> in Rows or Columns.</li>
+        <li><strong>Rows</strong> is what runs down the side. Use <em>then by</em> to nest a second or third level,
+          such as sector then state. Each level gets a subtotal; click a row to collapse it.</li>
+        <li><strong>Columns</strong> is what runs across, usually <em>year</em>. Choose (none) for one total column.</li>
+        <li><strong>More settings</strong> opens the full panel. Drag fields from <em>All Columns</em> into Group By,
+          Split By or Where. Use Where to filter, for example <em>state == ID</em>. Use the export button above the
+          table to download the current view as CSV.</li>
+      </ol>
+      <p>Try these, then look at the dropdowns to see how each one is set up:</p>
+      <ul>
+        <li class="recipe">Idaho institutions, every year<button data-view="idaho">Show me</button></li>
+        <li class="recipe">Institution type, then state<button data-view="sectorState">Show me</button></li>
+        <li class="recipe">Each federal agency by institution type, FY 2024<button data-view="agencySector">Show me</button></li>
+        <li class="recipe">R1 universities' federal funding, by agency<button data-view="r1Agency">Show me</button></li>
+      </ul>
+      <h3>Chart builder tab</h3>
+      <p>Each row is one institution in one fiscal year. Every measure is its own field, in thousands of dollars.
+        The example buttons above the chart builder open ready-made charts you can change; drag a field off a shelf to
+        remove it.</p>
+      <ol>
+        <li>Drag <em>year</em> to the X axis and a measure, such as <em>Source of funds: All R&amp;D</em>, to the Y
+          axis. Measures are summed.</li>
+        <li>Drag <em>sector</em> or <em>state</em> to Color for one line or bar per group.</li>
+        <li>Drag a field to Filters to narrow the data, for example <em>state</em> to just Idaho.</li>
+        <li>Change the mark type in the toolbar: bar, line, area, point, or table. Transpose swaps the axes.</li>
+        <li>Use the <strong>+</strong> next to the chart tabs to start a new chart; your other charts stay open.</li>
+      </ol>
+      <p>For tables grouped by several fields with subtotals, or for comparing many measures at once, the Table tab is
+        easier.</p>
+    </dialog>
 
     <p class="chart-note">Source: NCSES HERD Survey public microdata, FY 2012-2024, nominal dollars. Institution type (sector)
       from the 2021 Carnegie Classification. Measures marked "standard form" cover institutions with $1 million or more in
@@ -86,6 +158,23 @@
 
     renderLayout('explore.html');
     const $ = id => document.getElementById(id);
+
+    let showView;  // set once the table has loaded
+
+    // ── How-to dialog, opened from either tab ───────────────────────────────
+    const howto = $('howto');
+    document.querySelectorAll('.help').forEach(b => { b.onclick = () => howto.showModal(); });
+    howto.addEventListener('click', async e => {
+      const r = howto.getBoundingClientRect();
+      const outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      if (e.target.dataset.view || e.target.classList.contains('close') || outside) howto.close();
+      // Recipes are table views: switch to the Table tab and wait for it before applying one
+      if (e.target.dataset.view) {
+        open('table');
+        await loaded.table;
+        showView(e.target.dataset.view);
+      }
+    });
 
     // ── Table (Perspective) ─────────────────────────────────────────────────
     async function loadTable() {
@@ -118,33 +207,87 @@
       const fmt0 = { amount: { number_format: { maximumFractionDigits: 0 } } };
       const base = { plugin: 'Datagrid', columns: ['amount'], aggregates: { amount: 'sum' }, columns_config: fmt0,
                      split_by: ['year'], sort: [['amount', 'desc']], settings: false };
+      const ALL = [['category', '==', 'Source of funds'], ['measure', '==', 'All R&D']];
       const VIEWS = {
-        sector: { ...base, group_by: ['sector'], filter: [['measure', '==', 'All R&D']] },
-        state: { ...base, group_by: ['state'], filter: [['measure', '==', 'All R&D']] },
-        institutions: { ...base, group_by: ['institution'], filter: [['measure', '==', 'All R&D']] },
+        sector: { ...base, group_by: ['sector'], filter: ALL },
+        state: { ...base, group_by: ['state'], filter: ALL },
+        institutions: { ...base, group_by: ['institution'], filter: ALL },
         agency: { ...base, group_by: ['measure'], filter: [['category', '==', 'Federal agency']] },
         field: { ...base, group_by: ['measure'], filter: [['category', '==', 'Field of research']] },
-        chart: { plugin: 'Y Line', columns: ['amount'], aggregates: { amount: 'sum' }, group_by: ['year'],
-                 split_by: ['measure'], filter: [['category', '==', 'Source of funds'], ['measure', '!=', 'All R&D']],
-                 sort: [], settings: false },
+        // Recipes from the how-to dialog
+        idaho: { ...base, group_by: ['institution'], filter: [...ALL, ['state', '==', 'ID']] },
+        sectorState: { ...base, group_by: ['sector', 'state'], filter: ALL },
+        agencySector: { ...base, group_by: ['measure'], split_by: ['sector'],
+                        filter: [['category', '==', 'Federal agency'], ['year', '==', '2024']] },
+        r1Agency: { ...base, group_by: ['measure'], filter: [['category', '==', 'Federal agency'], ['sector', '==', 'R1']] },
         // Every row as it is stored: one institution, year and measure
         raw: { plugin: 'Datagrid', group_by: [], split_by: [], filter: [], columns_config: fmt0,
                columns: ['institution', 'state', 'sector', 'year', 'category', 'measure', 'unit', 'amount'],
                sort: [['institution', 'asc'], ['year', 'asc']], settings: false },
       };
       const presets = $('presets');
+      const press = name => presets.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
       async function show(name) {
         await viewer.restore(VIEWS[name]);
-        presets.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
+        press(name);
       }
       presets.addEventListener('click', e => { if (e.target.dataset.view) show(e.target.dataset.view); });
+      showView = show;
+
+      // Build your own: dropdowns for the common pivot, kept in sync with the viewer
+      const FIELDS = ['institution', 'state', 'sector', 'public or private', 'minority-serving', 'medical school', 'year', 'category', 'measure'];
+      const opt = (value, text) => Object.assign(document.createElement('option'), { value, textContent: text });
+      for (const id of ['g0', 'g1', 'g2', 's0']) $(id).append(opt('', '(none)'), ...FIELDS.map(f => opt(f, f)));
+      // Measure choices: one measure, or every measure in a category whose measures don't overlap.
+      // Summing a total with its parts (All R&D with Federal government, say) double counts.
+      const DISJOINT = ['Federal agency', 'Field of research', 'Field of research, federal'];
+      const measureFilters = {};
+      const byCategory = {};
+      data.category.forEach((c, i) => (byCategory[c] ??= new Set()).add(data.measure[i]));
+      $('m').append(opt('custom', '(set in More settings)'));
+      for (const cat of Object.keys(byCategory).sort()) {
+        const group = Object.assign(document.createElement('optgroup'), { label: cat });
+        if (DISJOINT.includes(cat)) {
+          measureFilters[`c:${cat}`] = [['category', '==', cat]];
+          group.append(opt(`c:${cat}`, `Every ${cat} measure`));
+        }
+        for (const mea of [...byCategory[cat]].sort()) {
+          measureFilters[`m:${cat}:${mea}`] = [['category', '==', cat], ['measure', '==', mea]];
+          group.append(opt(`m:${cat}:${mea}`, mea));
+        }
+        $('m').append(group);
+      }
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      // The Measure dropdown owns the category and measure filters; other filters (year, state) are left alone
+      const isMeasure = f => f[0] === 'category' || f[0] === 'measure';
+      async function syncBuilder() {
+        const cfg = await viewer.save();
+        ['g0', 'g1', 'g2'].forEach((id, i) => { $(id).value = cfg.group_by[i] ?? ''; });
+        $('s0').value = cfg.split_by[0] ?? '';
+        const mf = cfg.filter.filter(isMeasure);
+        $('m').value = Object.keys(measureFilters).find(k => same(measureFilters[k], mf)) ?? 'custom';
+      }
+      viewer.addEventListener('perspective-config-update', syncBuilder);
+      $('builder').addEventListener('change', async () => {
+        const cfg = await viewer.save();
+        const group_by = [...new Set(['g0', 'g1', 'g2'].map(id => $(id).value).filter(Boolean))];
+        const m = $('m').value;
+        await viewer.restore({
+          group_by, split_by: $('s0').value ? [$('s0').value] : [],
+          filter: m === 'custom' ? cfg.filter : [...measureFilters[m], ...cfg.filter.filter(f => !isMeasure(f))],
+          ...(group_by.length ? { columns: ['amount'], aggregates: { amount: 'sum' }, columns_config: fmt0, sort: [['amount', 'desc']] } : {}),
+        });
+        press(null);
+      });
+      $('more').onclick = () => viewer.restore({ settings: true });
       await show('sector');
+      await syncBuilder();
       $('table-status').remove();
     }
 
     // ── Chart builder (Graphic Walker) ──────────────────────────────────────
     async function loadChart() {
-      const [{ default: React }, { createRoot }, { GraphicWalker }] = await Promise.all([
+      const [{ default: React }, { createRoot }, { GraphicWalker, normalize }] = await Promise.all([
         import('https://esm.sh/react@19.1.0'),
         import('https://esm.sh/react-dom@19.1.0/client'),
         import('https://esm.sh/@kanaries/graphic-walker@0.5.3?deps=react@19.1.0,react-dom@19.1.0'),
@@ -167,8 +310,29 @@
       ];
       // Booleans read better as words in a chart builder
       for (const r of rows) for (const d of ['minority-serving', 'hbcu', 'medical school', 'land-grant']) r[d] = r[d] ? 'Yes' : 'No';
+      // Example charts open as tabs; the buttons above switch between them
+      const ALL = 'Source of funds: All R&D';
+      const latest = [{ field: 'year', oneOf: [2024] }];
+      const examples = [
+        { name: 'R&D by institution type', mark: 'line', x: 'year', y: ALL, color: 'sector' },
+        { name: 'NIH funding by institution type', mark: 'bar', x: 'year', y: 'Federal agency: Health and Human Services (incl. NIH)', color: 'sector' },
+        { name: 'States, FY 2024', mark: 'bar', y: { field: 'state', sort: 'descending' }, x: ALL, filters: latest },
+        { name: 'Federal vs. business, FY 2024', mark: 'point', x: 'Source of funds: Federal government',
+          y: 'Source of funds: Business', color: 'sector', aggregate: false, filters: latest },
+        { name: 'Your chart' },
+      ];
+      const gwRef = React.createRef();
       $('gw').innerHTML = '';
-      createRoot($('gw')).render(React.createElement(GraphicWalker, { data: rows, fields, appearance: 'light' }));
+      createRoot($('gw')).render(React.createElement(GraphicWalker, {
+        ref: gwRef, data: rows, fields, appearance: 'light', chart: examples.map(c => normalize(c, fields)),
+      }));
+      const buttons = $('gw-examples');
+      buttons.addEventListener('click', e => {
+        const i = e.target.dataset.chart;
+        if (i === undefined) return;
+        gwRef.current?.openChart(Number(i));
+        buttons.querySelectorAll('[data-chart]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.chart === i)));
+      });
     }
 
     // ── Tabs: each library loads the first time its tab opens ────────────────
