@@ -33,8 +33,8 @@
     details.sql pre { background: var(--panel); padding: 0.5rem 0.7rem; border-radius: 0.4rem; overflow-x: auto; white-space: pre-wrap; }
     .sql-error { color: #8a1f1f; font-size: 0.8rem; }
     .ask-chart { width: 100%; min-height: 380px; }
-    /* Buttons keep their own height instead of stretching to the textarea */
-    .input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+    /* Buttons keep their own height and sit on the textarea's center line */
+    .input-row { display: flex; gap: 0.5rem; align-items: center; }
     .input-row .btn { white-space: nowrap; padding: 0.45rem 1.1rem; }
     .input-row textarea { flex: 1; font: inherit; padding: 0.5rem 0.7rem; border-radius: 0.5rem; border: 1px solid var(--line); resize: vertical; min-height: 2.8rem; }
     .answer-note { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
