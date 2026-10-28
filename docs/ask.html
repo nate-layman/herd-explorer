@@ -402,6 +402,14 @@ ${contents}`;
                  'If a query failed or returned the wrong thing, write a corrected query instead.';
           thinking.innerHTML = 'Reading the results&hellip;';
         }
+        // Out of rounds while the model was still querying: its last query has run, so ask once
+        // more for an answer from the results, instead of showing "let me rerun the query" as the answer
+        if (fenced(reply, 'sql').length) {
+          turn += '\n\nThis is the last round: answer now from the results above without writing another query. ' +
+                  'If they are not enough to answer, say what is missing.';
+          reply = await callModel(SYSTEM, history, turn);
+          history.push({ role: 'user', text: turn }, { role: 'model', text: reply });
+        }
         thinking.remove();
         const { charts, text } = takeCharts(reply.replace(/```docs\s*\n[\s\S]*?```/g, ''));
         const body = markdown(text || '(No explanation returned.)');
