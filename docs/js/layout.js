@@ -9,8 +9,8 @@ const PAGES = [
   ['compare.html', 'Compare'],
   ['explore.html', 'Explore'],
   ['ask.html', 'Ask'],
-  ['model.html', 'About the model'],
   ['data.html', 'About HERD'],
+  ['model.html', 'About the model'],
 ];
 
 export const DISCLAIMER =
