@@ -11,7 +11,7 @@ HERD Explorer is a browser-based explorer for the NCSES Higher Education Researc
   - **Chart builder** (explore.html#chart): drag-and-drop charts with example charts to start from. See chart-builder.md.
 - **Ask** (ask.html): ask questions in plain language; an AI model writes SQL that runs in your browser. See ask.md.
 - **About the model** (model.html): how the projections are made and tested. See projection-model.md.
-- **Data & sources** (data.html): sources, definitions, how the data were put together, downloads. See data-sources.md.
+- **About HERD** (data.html): what the HERD Survey is (who reports, what counts as R&D, timing, history, caveats), then sources, definitions, how the data were put together, downloads. See data-sources.md.
 
 The old Pivot page (pivot.html) now redirects to Explore's Table tab.
 

@@ -10,7 +10,7 @@ const PAGES = [
   ['explore.html', 'Explore'],
   ['ask.html', 'Ask'],
   ['model.html', 'About the model'],
-  ['data.html', 'Data & sources'],
+  ['data.html', 'About HERD'],
 ];
 
 export const DISCLAIMER =
@@ -30,7 +30,7 @@ export function renderLayout(active) {
   document.body.insertAdjacentHTML('beforeend', `
     <footer class="site-footer">
       <p>Data: <a href="https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development">NCSES
-        Higher Education Research and Development Survey</a>, FY <span data-meta="first_year">2012</span> to FY <span data-meta="last_year">2024</span>. See <a href="data.html">Data &amp; sources</a>.</p>
+        Higher Education Research and Development Survey</a>, FY <span data-meta="first_year">2012</span> to FY <span data-meta="last_year">2024</span>. See <a href="data.html">About HERD</a>.</p>
       <p><a href="${REPORT_ERROR}">Report a data error</a> &middot; <a href="${REPO}">Source code on GitHub</a>
         &middot; Apache 2.0</p>
       <p>A project of <a href="https://ai4ra.uidaho.edu">AI4RA</a> at the University of Idaho, funded by the U.S. National Science Foundation

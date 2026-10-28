@@ -3,14 +3,63 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HERD Explorer: Data and sources</title>
-  <meta name="description" content="Where HERD Explorer's data come from, how they were combined, what each measure means, and downloads." />
+  <title>HERD Explorer: About HERD</title>
+  <meta name="description" content="What the HERD Survey is, where HERD Explorer's data come from, how they were combined, what each measure means, and downloads." />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/site.css" />
+  <style>
+    h2.part { font-size: 1.6rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+  </style>
 </head>
 <body>
   <main>
-    <h1>Data &amp; sources</h1>
+    <h1>About HERD</h1>
+    <p class="lede">The Higher Education Research and Development (HERD) Survey is the main source of data on research and
+      development spending at U.S. colleges and universities. The National Center for Science and Engineering Statistics
+      (NCSES), part of the U.S. National Science Foundation, runs it every year.
+      <span id="survey-size">In FY <span data-meta="last_year">2024</span>, institutions reported their R&amp;D spending to the survey.</span></p>
+
+    <h2>The survey</h2>
+    <ul>
+      <li><strong>Who reports.</strong> Public and private nonprofit colleges and universities in the United States and its
+        territories that grant a bachelor's degree or higher and spend at least $150,000 on separately accounted-for R&amp;D
+        in their fiscal year. Each geographically separate campus headed by its own president or chancellor reports on its
+        own. The survey is a census of these institutions, not a sample.</li>
+      <li><strong>What counts as R&amp;D.</strong> Creative and systematic work undertaken to increase knowledge: basic
+        research, applied research and experimental development, in every field, not only science and engineering. Spending
+        includes direct costs, indirect costs (recovered and unrecovered) and money passed through to other institutions on
+        subawards. It leaves out public service and outreach, curriculum development, training grants not for research, and
+        construction or renovation.</li>
+      <li><strong>What it asks.</strong> R&amp;D spending by source of funds (federal, state and local government, the
+        institution itself, business, nonprofits and others), by federal agency, by field of research and by type of cost,
+        plus subawards given and received and counts of R&amp;D personnel. Institutions with less than $1 million in R&amp;D
+        answer a short form with a few core questions.</li>
+      <li><strong>When.</strong> Each institution reports for its own fiscal year, which for most runs July 1 to June 30.
+        NCSES collects the data online over the following school year and publishes them roughly a year and a half after
+        the fiscal year ends.</li>
+      <li><strong>History.</strong> HERD replaced the Survey of Research and Development Expenditures at Universities and
+        Colleges, which ran from FY 1972, in FY 2010, adding questions and campus-level reporting. The short form began in
+        FY 2012, which is why this site starts there.</li>
+      <li><strong>Who uses it.</strong> Universities benchmark against peers with it, NCSES uses it for national statistics
+        such as Science and Engineering Indicators, and it underlies rankings and classifications, including the R&amp;D
+        spending measure in the Carnegie research designations.</li>
+    </ul>
+
+    <h2>Things to keep in mind</h2>
+    <ul>
+      <li>Institutions report from their own accounting records, so what counts as separately accounted-for R&amp;D, and
+        especially institution funds, varies somewhat from one institution to another.</li>
+      <li>When an institution does not answer, NCSES imputes its values from its earlier years and its peers. Imputed amounts
+        are a small share of the national total (well under 1 percent).</li>
+      <li>Subaward money is counted twice in national totals: once by the institution that passes it through and again by
+        the one that spends it.</li>
+      <li>R&amp;D at federally funded research and development centers (FFRDCs) that universities manage is covered by a
+        separate NCSES survey, not by HERD.</li>
+    </ul>
+    <p>NCSES describes the survey, its questionnaire and its methods in full on the
+      <a href="https://ncses.nsf.gov/surveys/higher-education-research-development">HERD Survey page</a>.</p>
+
+    <h2 class="part" id="data">Data &amp; sources</h2>
     <p class="lede">Every number on this site comes from public sources listed below. HERD Explorer reshapes and combines
       them but never changes a reported value. If something looks wrong, please
       <a id="report" href="#">report a data error</a>.</p>
@@ -69,6 +118,7 @@
   <script type="module">
     import { renderLayout, REPO, REPORT_ERROR, DISCLAIMER } from './js/layout.js';
     import { query } from './js/db.js';
+    import { fmt } from './js/charts.js';
 
     renderLayout('data.html');
     const $ = id => document.getElementById(id);
@@ -76,6 +126,12 @@
     $('crosswalk').href = `${REPO}/blob/main/pipeline/carnegie_overrides.csv`;
     $('disclaimer').textContent = DISCLAIMER;
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    const [size] = await query(`
+      SELECT year, count(DISTINCT inst_id) AS n, sum(value) AS total FROM metrics
+      WHERE measure_id = 'source_all_r_d' AND year = (SELECT max(year) FROM metrics) GROUP BY year`);
+    if (size) $('survey-size').textContent =
+      `In FY ${size.year}, ${Number(size.n).toLocaleString()} institutions reported ${fmt(size.total, 'thousands_usd').replace('B', ' billion')} in R&D.`;
 
     const sources = await query('SELECT * FROM sources');
     $('sources').innerHTML = '<tr><th>Used for</th><th>Publisher</th><th>Title</th><th>Downloaded</th></tr>' +
