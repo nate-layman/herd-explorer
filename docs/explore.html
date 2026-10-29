@@ -110,7 +110,10 @@
         Not sure where to start? Click an example to open a ready-made chart you can change.</div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
         column, in thousands of dollars (personnel in people). Open an example and change it, or start your own: try
-        <em>year</em> on the x-axis, a measure on the y-axis, and <em>sector</em> or <em>state</em> on color.</p>
+        <em>year</em> on the x-axis, a measure on the y-axis, and <em>sector</em> or <em>state</em> on color.
+        To switch chart type and keep your fields where they are, use the <strong>Mark Type</strong> menu in the toolbar.
+        The <strong>Auto Viz</strong> strip at the right opens a panel that rebuilds the chart from a recommendation and
+        may move or drop fields.</p>
       <div id="gw"><p class="status" style="padding:1rem">Loading the chart builder&hellip;</p></div>
       <p class="chart-note">Chart builder: <a href="https://github.com/Kanaries/graphic-walker">Graphic Walker</a> (Apache 2.0).</p>
     </section>
@@ -370,6 +373,15 @@
         root.append(Object.assign(document.createElement('style'), {
           textContent: '.sm\\:flex-col.sm\\:h-full { max-height: max(420px, calc(100vh - 140px)); }',
         }));
+      })();
+      // The Auto Viz panel's chart types rebuild every shelf from a recommendation, so a field on Color can move or
+      // vanish; the toolbar's Mark Type menu changes only the mark. Start with the panel collapsed so that menu is the
+      // obvious way to switch, and the chart gets the room. The panel's own button reopens it.
+      (function collapseAutoViz(tries = 0) {
+        const button = [...$('gw').querySelectorAll('div')].find(e => e.shadowRoot)?.shadowRoot
+          .querySelector('button[title="Collapse panel"]');
+        if (!button) return tries < 600 && requestAnimationFrame(() => collapseAutoViz(tries + 1));
+        button.click();
       })();
       // Its drag library (a react-beautiful-dnd fork) scrolls the page when a drag nears the window edge, and if the
       // field list is scrolled too, it then misplaces the shelves and the drop misses. Hold the page still mid-drag.

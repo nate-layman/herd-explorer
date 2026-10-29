@@ -21,7 +21,8 @@ The Field List lists the measures alphabetically by category in their own scroll
 2. Drag a measure, such as "Source of funds: All R&D", to **Y-Axis**. Measures are summed by default; use the field's menu on the shelf to change the aggregation.
 3. Drag **sector** or **state** to **Color** for one line or bar per group.
 4. Drag a field to **Filters** to narrow the data, for example state to just Idaho, or year to {last_year}.
-5. Change the mark type in the toolbar or the chart-type panel: bar, stacked bar, line, area, scatter, box plot, text table and more. Transpose swaps the axes.
+5. Change the chart type with the **Mark Type** menu in the toolbar: bar, line, area, scatter, box plot, table and more. It keeps your fields where they are. Transpose swaps the axes.
+   The **Auto Viz** panel is different. It starts collapsed to a narrow strip at the right edge; click the strip to open it. Its chart types rebuild the chart from a recommendation, so fields can move between shelves or drop off, for example a field on Color. Use it to explore suggestions, and Undo in the toolbar to go back.
 6. Drag a field off a shelf to remove it.
 
 Use **+ New** next to the chart tabs to start another chart; the others stay open.
