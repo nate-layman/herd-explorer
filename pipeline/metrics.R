@@ -32,26 +32,26 @@ sources <- c(`01.g` = "All R&D", `01.a` = "Federal government", `01.b` = "State 
              `01.c` = "Business", `01.d` = "Nonprofit organizations", `01.e` = "Institution funds",
              `01.f` = "All other sources")
 for (q in names(sources)) {
-  add(paste0("source_", slug(sources[[q]])), sources[[q]], "Source of funds", "thousands_usd", both,
+  add(paste0("source_", slug(sources[[q]])), sources[[q]], "Source of funds", "dollars", both,
       if (q == "01.g") "Total R&D expenditures from all sources. Survey question 1, row g."
       else sprintf("R&D expenditures funded by %s. Survey question 1, row %s.", tolower(sources[[q]]), sub("01.", "", q, fixed = TRUE)),
       cell(sprintf("question_no = '%s'", q)))
 }
 
 for (a in names(agencies)) {
-  add(paste0("agency_", slug(a)), agencies[[a]], "Federal agency", "thousands_usd", std_only,
+  add(paste0("agency_", slug(a)), agencies[[a]], "Federal agency", "dollars", std_only,
       sprintf("Federally funded R&D expenditures from %s, all fields. Survey question 9, row k.", agencies[[a]]),
       cell(sprintf("form = 'standard' AND question_no = '09K' AND column_label = '%s'", a)))
 }
 
 for (f in fields) {
   lbl <- paste0(f, ", all")
-  add(paste0("field_", slug(f)), f, "Field of research", "thousands_usd", both,
+  add(paste0("field_", slug(f)), f, "Field of research", "dollars", both,
       sprintf("R&D expenditures in %s, all sources. Standard form: question 9 plus question 11; short form: question 2.", f),
       sprintf("%s UNION ALL %s",
               cell(sprintf("form = 'standard' AND (question_no LIKE '09%%' OR question_no LIKE '11%%') AND row_label = '%s' AND column_label = 'Total'", gsub("'", "''", lbl))),
               cell(sprintf("form = 'short' AND question_no LIKE '02.%%' AND row_label = '%s' AND column_label = 'Total'", gsub("'", "''", lbl)))))
-  add(paste0("field_federal_", slug(f)), paste(f, "(federal)"), "Field of research, federal", "thousands_usd", both,
+  add(paste0("field_federal_", slug(f)), paste(f, "(federal)"), "Field of research, federal", "dollars", both,
       sprintf("Federally funded R&D expenditures in %s. Standard form: question 9; short form: question 2.", f),
       sprintf("%s UNION ALL %s",
               cell(sprintf("form = 'standard' AND question_no LIKE '09%%' AND row_label = '%s' AND column_label = 'Total'", gsub("'", "''", lbl))),
@@ -62,11 +62,11 @@ costs <- c(`12.a` = "Salaries, wages, and fringe benefits", `12.b1` = "Software,
            `12.b2` = "Software, capitalized", `12.c` = "Capitalized equipment",
            `12.d` = "Passed through to subrecipients", `12.e` = "Other direct costs", `12.f` = "Indirect costs")
 for (q in names(costs)) {
-  add(paste0("cost_", slug(costs[[q]])), costs[[q]], "Type of cost", "thousands_usd", std_only,
+  add(paste0("cost_", slug(costs[[q]])), costs[[q]], "Type of cost", "dollars", std_only,
       sprintf("R&D expenditures by type of cost: %s. Survey question 12, row %s.", costs[[q]], sub("12.", "", q, fixed = TRUE)),
       cell(sprintf("form = 'standard' AND question_no = '%s'", q)))
 }
-add("cost_direct", "Direct costs", "Type of cost", "thousands_usd", std_only,
+add("cost_direct", "Direct costs", "Type of cost", "dollars", std_only,
     "All direct costs: survey question 12, rows a through e.",
     cell("form = 'standard' AND question_no IN ('12.a','12.b1','12.b2','12.c','12.d','12.e')"))
 
@@ -74,18 +74,18 @@ subs <- list(c("07.e", "subawards_received", "Received as a subrecipient", "ques
              c("08.e", "subawards_passed", "Passed through to subrecipients", "question 8"))
 for (s in subs) for (col in c("Total", "Federal", "Nonfederal")) {
   add(paste0(s[2], if (col == "Total") "" else paste0("_", tolower(col))),
-      paste0(s[3], if (col == "Total") "" else paste0(" (", tolower(col), ")")), "Subawards", "thousands_usd", std_only,
+      paste0(s[3], if (col == "Total") "" else paste0(" (", tolower(col), ")")), "Subawards", "dollars", std_only,
       sprintf("R&D expenditures %s, %s funds, all partner types. Survey %s, row e.", tolower(s[3]), tolower(col), s[4]),
       cell(sprintf("form = 'standard' AND question_no = '%s' AND column_label = '%s'", s[1], col)))
 }
 
-add("foreign_total", "Foreign sources", "Other", "thousands_usd", std_only,
+add("foreign_total", "Foreign sources", "Other", "dollars", std_only,
     "R&D expenditures funded by foreign sources (governments, businesses, nonprofits, universities). Survey question 2, total row.",
     cell("form = 'standard' AND question_no = '02.f'"))
-add("medical_school", "Medical school R&D", "Other", "thousands_usd", std_only,
+add("medical_school", "Medical school R&D", "Other", "dollars", std_only,
     "R&D expenditures at the institution's medical school. Survey question 4.",
     cell("form = 'standard' AND question_no = '04' AND row_label = 'Total'"))
-add("clinical_trials", "Clinical trials", "Other", "thousands_usd", std_only,
+add("clinical_trials", "Clinical trials", "Other", "dollars", std_only,
     "R&D expenditures for clinical trials. Survey question 5, total.",
     cell("form = 'standard' AND question_no = '05' AND row_label = 'Total'"))
 
@@ -117,7 +117,7 @@ build_metrics <- function(con) {
              sum(value) FILTER (WHERE measure_id = 'source_federal_government' AND inst_id IN (SELECT inst_id FROM facts WHERE form = 'standard' AND year = metrics.year)) AS fed_std,
              sum(value) FILTER (WHERE measure_id LIKE 'agency_%')                                     AS agencies
       FROM metrics GROUP BY year)
-    SELECT * FROM t WHERE fields IS NULL OR agencies IS NULL OR abs(all_rd - fields) > 0.5 OR abs(fed_std - agencies) > 0.5")
+    SELECT * FROM t WHERE fields IS NULL OR agencies IS NULL OR abs(all_rd - fields) > 500 OR abs(fed_std - agencies) > 500")
   if (nrow(gaps)) { print(gaps); stop("metrics do not add up; see the years above") }
   message(sprintf("metrics: %d measures, %s rows", nrow(catalog),
                   format(dbGetQuery(con, "SELECT count(*) AS n FROM metrics")$n, big.mark = ",")))

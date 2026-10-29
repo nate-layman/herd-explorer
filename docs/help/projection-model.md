@@ -15,7 +15,7 @@ An institution is modeled if it reported a positive amount in at least four year
 
 ## The model in symbols
 
-With y = log spending (thousands of nominal dollars) and g = y(t) - y(t-1):
+With y = log spending (nominal dollars) and g = y(t) - y(t-1):
 
 - g(i,t) ~ Normal(eta(i,t), sigma(y(i,t-1)))
 - eta(i,t) = mu(type) + a(state) + u(institution) + gamma(year) + delta(year, type)

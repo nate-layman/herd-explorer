@@ -11,7 +11,7 @@
 # Horizon and backtest cutoffs follow pipeline/release.yml.
 #
 # Writes to model/output/ (published to Hugging Face by model/publish.sh):
-#   <measure>.parquet   inst_id, year, draw, value (thousands of dollars), 200 draws per institution-year
+#   <measure>.parquet   inst_id, year, draw, value (dollars), 200 draws per institution-year
 #   backtest.parquet    CRPS and interval coverage by model, cutoff and horizon
 #   model_info.parquet  settings and fitted parameters for the methods page
 #
@@ -43,7 +43,7 @@ dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 con <- dbConnect(duckdb(), file.path(root, "docs", "data", "herd.duckdb"), read_only = TRUE)
 on.exit(dbDisconnect(con, shutdown = TRUE), add = TRUE)
-measures <- dbGetQuery(con, "SELECT id FROM measure_catalog WHERE unit = 'thousands_usd' ORDER BY id")$id
+measures <- dbGetQuery(con, "SELECT id FROM measure_catalog WHERE unit = 'dollars' ORDER BY id")$id
 data_last <- dbGetQuery(con, "SELECT max(year) AS y FROM metrics")$y
 if (data_last != release$last_year) stop("the database ends in ", data_last, " but release.yml says ", release$last_year, "; run Rscript pipeline/build.R first")
 
@@ -196,7 +196,7 @@ score <- function(sim, actual, label, cutoff, sizes) {
   a <- actual[match(key, paste(actual$inst_id, actual$year)), "y"]
   ok <- !is.na(a)
   q <- t(apply(sim$logv[ok, , drop = FALSE], 1, quantile, c(0.05, 0.1, 0.9, 0.95)))
-  size <- cut(exp(sizes[match(sim$nd$inst_id[ok], names(sizes))]) * 1000, c(0, 5e6, 1e8, Inf),
+  size <- cut(exp(sizes[match(sim$nd$inst_id[ok], names(sizes))]), c(0, 5e6, 1e8, Inf),
               labels = c("Under $5M", "$5M to $100M", "Over $100M"))
   data.frame(model = label, cutoff = cutoff, horizon = sim$nd$year[ok] - cutoff, size = size,
              crps = crps_sample(a[ok], sim$logv[ok, , drop = FALSE]),
@@ -292,7 +292,7 @@ write_parquet <- function(df, name) {
   duckdb_unregister(con, "tmp")
 }
 # Measures not modeled at all, with the reason the site shows
-not_modeled <- dbGetQuery(con, "SELECT id FROM measure_catalog WHERE unit <> 'thousands_usd'")$id
+not_modeled <- dbGetQuery(con, "SELECT id FROM measure_catalog WHERE unit <> 'dollars'")$id
 for (id in not_modeled) info[[id]] <- data.frame(measure_id = id, status = "unavailable",
   reason = "Personnel counts are released only from FY 2022, too few years to model.")
 all_cols <- unique(unlist(lapply(info, names)))

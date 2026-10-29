@@ -88,10 +88,9 @@
       const rows = await query(`
         SELECT inst_id, year, value FROM metrics
         WHERE measure_id = ${lit(id)} AND inst_id IN (${selected.map(lit).join(',')}) ORDER BY year`);
-      const scale = v => m.unit === 'thousands_usd' ? v * 1000 : v;
       const series = (pts) => {
         const base = pts[0]?.value;
-        return pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null) : scale(p.value));
+        return pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null) : p.value);
       };
 
       const traces = selected.map((sid, k) => {
@@ -112,8 +111,9 @@
           const b = bands.filter(x => x.grp === sid);
           if (!pts.length || !b.length) return;
           const base = pts[0].value;
-          const scaleP = v => mode === 'index' ? 100 * v / base : scale(v);
-          traces.push(...bandTraces(b, pts[pts.length - 1], PALETTE[k % PALETTE.length], scaleP, insts.find(i => i.inst_id === sid).name));
+          const scaleP = v => mode === 'index' ? 100 * v / base : v;
+          traces.push(...bandTraces(b, pts[pts.length - 1], PALETTE[k % PALETTE.length], scaleP, insts.find(i => i.inst_id === sid).name,
+            mode === 'index' ? '.0f' : m.unit === 'dollars' ? '$,.0f' : ',.0f'));
         });
       }
       $('proj-note').hidden = !($('project').checked && canProject);
@@ -138,7 +138,7 @@
       Plotly.react('chart', traces, {
         ...BASE_LAYOUT,
         yaxis: { ...BASE_LAYOUT.yaxis, title: { text: mode === 'index' ? `Index, FY ${M.first_year} = 100` : unitAxis(m.unit) },
-                 tickprefix: mode === 'value' && m.unit === 'thousands_usd' ? '$' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
+                 tickprefix: mode === 'value' && m.unit === 'dollars' ? '$' : '', tickformat: mode === 'value' ? ',.0f' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
         `Source: NCSES HERD Survey public microdata, FY ${M.first_year}-${M.last_year}. Nominal dollars. Institution type from the 2021 Carnegie Classification.`;

@@ -108,7 +108,7 @@
         const base = pts[0]?.value;
         const y = pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null)
                             : mode === 'share' ? 100 * p.value / totals.get(p.year)
-                            : m.unit === 'thousands_usd' ? p.value * 1000 : p.value);
+                            : p.value);
         const text = pts.map(p => fmt(p.value, m.unit));
         const color = g.startsWith('All other') || g === 'Unknown' ? OTHER : PALETTE[k % PALETTE.length];
         return { x: pts.map(p => p.year), y, text, name: g, type: 'scatter', mode: 'lines+markers',
@@ -129,9 +129,9 @@
           const b = bands.filter(x => x.grp === g);
           if (!pts.length || !b.length) return;
           const base = pts[0].value;
-          const scaleP = v => mode === 'index' ? 100 * v / base : (m.unit === 'thousands_usd' ? v * 1000 : v);
+          const scaleP = v => mode === 'index' ? 100 * v / base : v;
           const color = g.startsWith('All other') || g === 'Unknown' ? OTHER : PALETTE[k % PALETTE.length];
-          traces.push(...bandTraces(b, pts[pts.length - 1], color, scaleP, g));
+          traces.push(...bandTraces(b, pts[pts.length - 1], color, scaleP, g, mode === 'index' ? '.0f' : m.unit === 'dollars' ? '$,.0f' : ',.0f'));
         });
       }
       $('proj-note').hidden = !showProj;
@@ -142,7 +142,7 @@
       if (!$('trend').data) $('trend').innerHTML = '';
       Plotly.react('trend', traces, {
         ...BASE_LAYOUT, showlegend: groups.length > 1,
-        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: yTitle }, tickprefix: mode === 'value' && m.unit === 'thousands_usd' ? '$' : '',
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: yTitle }, tickprefix: mode === 'value' && m.unit === 'dollars' ? '$' : '', tickformat: mode === 'value' ? ',.0f' : '',
                  ticksuffix: mode === 'share' ? '%' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('trend-note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +

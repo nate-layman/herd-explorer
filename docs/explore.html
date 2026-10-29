@@ -109,8 +109,8 @@
       <div id="gw-tip" role="status" hidden><button class="close" aria-label="Close tip">&times;</button>
         Not sure where to start? Click an example to open a ready-made chart you can change.</div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
-        column, in dollars (personnel in people). NCSES publishes HERD in thousands of dollars; HERD Explorer multiplies by
-        1,000, so $1,234 thousand in an NCSES table is $1.23M here. Axes read K for thousands, M for millions and B for
+        column, in whole dollars (personnel in people). NCSES publishes HERD in thousands of dollars; HERD Explorer
+        multiplies by 1,000, so $1,234 thousand in an NCSES table is $1,234,000 here. Axes read K for thousands, M for millions and B for
         billions. Open an example and change it, or start your own: try
         <em>year</em> on the x-axis, a measure on the y-axis, and <em>sector</em> or <em>state</em> on color.
         To switch chart type and keep your fields where they are, use the <strong>Mark Type</strong> menu in the toolbar.
@@ -205,8 +205,7 @@
                CASE WHEN i.msi THEN 'Yes' ELSE 'No' END AS "minority-serving",
                CASE WHEN i.medical_school THEN 'Yes' ELSE 'No' END AS "medical school",
                CAST(m.year AS VARCHAR) AS year, c.category, c.label AS measure,
-               CASE c.unit WHEN 'thousands_usd' THEN 'dollars' ELSE c.unit END AS unit,
-               round(m.value * CASE WHEN c.unit = 'thousands_usd' THEN 1000 ELSE 1 END) AS amount
+               c.unit, round(m.value) AS amount
         FROM metrics m
         JOIN measure_catalog c ON c.id = m.measure_id
         JOIN institution_latest i USING (inst_id)`);
@@ -308,12 +307,11 @@
         import('https://esm.sh/react-dom@19.1.0/client'),
         import('https://esm.sh/@kanaries/graphic-walker@0.5.3?deps=react@19.1.0,react-dom@19.1.0'),
       ]);
-      const catalog = await query('SELECT id, label, category, unit FROM measure_catalog ORDER BY category, label');
+      const catalog = await query('SELECT id, label, category FROM measure_catalog ORDER BY category, label');
       // Column names people will read in the field list
       const colName = m => `${m.category}: ${m.label}`;
-      // HERD reports thousands of dollars; the chart builder shows whole dollars
       const pivotCols = catalog.map(m =>
-        `sum(value${m.unit === 'thousands_usd' ? ' * 1000' : ''}) FILTER (WHERE measure_id = '${m.id}') AS "${colName(m).replaceAll('"', '""')}"`).join(',\n');
+        `sum(value) FILTER (WHERE measure_id = '${m.id}') AS "${colName(m).replaceAll('"', '""')}"`).join(',\n');
       const rows = await query(`
         SELECT m.year, i.name AS institution, i.state, i.sector, i.control AS "public or private",
                i.highest_degree AS "highest degree", i.msi AS "minority-serving", i.hbcu, i.medical_school AS "medical school",

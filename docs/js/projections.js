@@ -41,7 +41,7 @@ const BANDS = `
 // Bands for the groups Trends shows. by_group/<measure>.parquet holds each group's draws
 // already summed (including unmodeled institutions held at their last value). Groups
 // outside `top` are folded into otherLabel by adding their draws draw by draw.
-// Returns rows of { grp, year, p05, p10, p50, p90, p95 } in thousands of dollars.
+// Returns rows of { grp, year, p05, p10, p50, p90, p95 } in dollars.
 export const STALE = 'Projection files are being updated. Try again in a few minutes.';
 
 // Derived files carry the fingerprint of the detail draws they were built from; model_info
@@ -88,7 +88,8 @@ export async function institutionBands(measureId, instIds) {
 
 // Plotly traces for one group's band: 90% band, 80% band and the median, joined to
 // the last observed point so the projection starts where the data end.
-export function bandTraces(bands, last, color, scale, name) {
+// yFormat is the d3 format for hover values, such as '$,.0f' for dollars.
+export function bandTraces(bands, last, color, scale, name, yFormat = ',.0f') {
   const xs = [last.year, ...bands.map(b => b.year)];
   const at = k => [last.value, ...bands.map(b => b[k])].map(scale);
   const fill = (lo, hi, opacity, label) => ([
@@ -102,7 +103,7 @@ export function bandTraces(bands, last, color, scale, name) {
     { x: xs, y: at('p50'), mode: 'lines', line: { color, width: 2, dash: 'dot' }, name: `${name} (projected)`,
       legendgroup: name, showlegend: false,
       customdata: xs.map((_, i) => i === 0 ? null : [scale(bands[i - 1].p10), scale(bands[i - 1].p90)]),
-      hovertemplate: '%{y:.3s} projected<br>80% range %{customdata[0]:.3s} to %{customdata[1]:.3s}<extra>%{fullData.legendgroup}</extra>' },
+      hovertemplate: `%{y:${yFormat}} projected<br>80% range %{customdata[0]:${yFormat}} to %{customdata[1]:${yFormat}}<extra>%{fullData.legendgroup}</extra>` },
   ];
 }
 

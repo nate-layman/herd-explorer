@@ -88,7 +88,7 @@
       <ol>
         <li><strong>The model is told what the data look like.</strong> Before your first question it receives a description of
           the tables, every measure with its meaning and coverage, the institution types, and rules for answering: dollars are
-          in thousands, report readable units, say which measure and years were used, never state a number that was not in the
+          in whole dollars, report them with commas, say which measure and years were used, never state a number that was not in the
           results.</li>
         <li><strong>It can read help documents when you ask for help.</strong> The model starts with only a table of
           contents of the site's <a href="https://github.com/nate-layman/herd-explorer/tree/main/docs/help">help documents</a>.
@@ -96,7 +96,7 @@
           modeled, it asks for the one or two documents it needs, your browser fetches them, and it answers from their
           text. Each answer lists the documents it read.</li>
         <li><strong>It writes a query.</strong> The model answers your question with SQL in a marked block, for example:
-          <pre>SELECT i.name, m.year, m.value / 1000 AS rd_millions
+          <pre>SELECT i.name, m.year, m.value AS rd_dollars
 FROM metrics m JOIN institution_latest i USING (inst_id)
 WHERE m.measure_id = 'source_all_r_d' AND i.state = 'ID'
 ORDER BY m.year</pre></li>
@@ -295,16 +295,16 @@ ORDER BY m.year, i.name` },
     const SYSTEM = `You answer questions about the NCSES Higher Education Research and Development (HERD) Survey, FY ${M.first_year} to FY ${M.last_year}, by writing DuckDB SQL that runs in the user's browser. You also help people use this site, HERD Explorer, and explain how its data and projections were made.
 
 TABLES (DuckDB SQL; views over Parquet):
-- metrics(year INTEGER, inst_id VARCHAR, measure_id VARCHAR, value DOUBLE): one row per institution, year and measure. Dollar values are in THOUSANDS of nominal dollars (multiply by 1000 for dollars). Personnel values are people or FTEs.
+- metrics(year INTEGER, inst_id VARCHAR, measure_id VARCHAR, value DOUBLE): one row per institution, year and measure. Dollar values are in whole nominal dollars (NCSES publishes thousands; HERD Explorer has multiplied by 1,000). Personnel values are people or FTEs.
 - measure_catalog(id, label, category, unit, coverage, definition): what each measure_id means.
 - institution_latest(inst_id, name, city, state, control, highest_degree, hbcu BOOLEAN, medical_school BOOLEAN, sector, msi BOOLEAN, hsi BOOLEAN, tribal BOOLEAN, land_grant BOOLEAN, ipeds_unitid, latest_year): one row per institution with its most recent name and attributes. state is a two-letter code. control is 'Public' or 'Private'.
-- national_published(source_table, population, year, dimension, measure, value, unit): national totals NCSES publishes, including breakdowns not released by institution (institutionally financed research, cost sharing, unrecovered indirect costs; indirect costs recovered and unrecovered). Thousands of dollars.
+- national_published(source_table, population, year, dimension, measure, value, unit): national totals NCSES publishes, including breakdowns not released by institution (institutionally financed research, cost sharing, unrecovered indirect costs; indirect costs recovered and unrecovered). Whole dollars.
 - cogr_requirements(year, cumulative_requirements, source_note): COGR's count of federal research requirements since 1991.
 
 sector values (2021 Carnegie Classification): ${sectors.join('; ')}.
 
 MEASURES (measure_id: label [category] coverage):
-${catalog.map(m => `${m.id}: ${m.label} [${m.category}]${m.coverage.startsWith('Standard') ? ' (standard-form institutions only)' : ''}${m.unit !== 'thousands_usd' ? ` (${m.unit})` : ''}`).join('\n')}
+${catalog.map(m => `${m.id}: ${m.label} [${m.category}]${m.coverage.startsWith('Standard') ? ' (standard-form institutions only)' : ''}${m.unit !== 'dollars' ? ` (${m.unit})` : ''}`).join('\n')}
 
 RULES
 - Put each query in a fenced block marked sql. Write one query per block, SELECT or WITH only. Join metrics to institution_latest on inst_id for names and groups.
@@ -313,8 +313,8 @@ RULES
 - institution_latest has no year column. For a per-institution average, median or count in a year, use AVG(value), MEDIAN(value) or COUNT(*) over the metrics rows for that year and group; each row is one institution that reported. Never divide a total by a count from institution_latest: it includes institutions that did not report that year, which makes averages too low. For averages, also consider the median, since a few very large institutions can pull a mean up.
 - When you describe a pattern (which group leads, the largest gap, a peak, the fastest growth), compute it in the query, for example as a difference column, rather than reading it off a table.
 - Adapt the EXAMPLE QUERIES below; they show the usual ways to compare years, groups and institutions.
-- After you see query results, answer in plain language in a few sentences. Report dollars in readable units ($1.2 billion, $45.3 million). Say which years and which measure you used. Never invent numbers that were not in the results; if the data cannot answer the question, say so.
-- If a chart would help, put each chart in its own fenced block marked chart, containing valid JSON: {"type": "line"|"bar"|"scatter", "sql": "<a SELECT>", "x": "<column>", "y": "<column, or a list of columns for one line each>", "series": "<optional column whose values split the data into lines or bars>", "title": "<short title>", "y_label": "<axis label>"}. Use either a list of y columns or series, not both. Keep to 8 lines or fewer. Prefer millions of dollars on charts.
+- After you see query results, answer in plain language in a few sentences. Report dollar amounts as whole dollars with commas ($1,234,567,000), not rounded to millions or billions. If someone compares with NCSES tables, explain that NCSES publishes thousands of dollars and this site multiplies by 1,000. Say which years and which measure you used. Never invent numbers that were not in the results; if the data cannot answer the question, say so.
+- If a chart would help, put each chart in its own fenced block marked chart, containing valid JSON: {"type": "line"|"bar"|"scatter", "sql": "<a SELECT>", "x": "<column>", "y": "<column, or a list of columns for one line each>", "series": "<optional column whose values split the data into lines or bars>", "title": "<short title>", "y_label": "<axis label>"}. Use either a list of y columns or series, not both. Keep to 8 lines or fewer. Chart dollars in whole dollars.
 - Write plainly. Do not use em dashes.
 - The data stop at FY ${M.last_year}. For questions about the future, say that the Trends and Compare pages show model projections with uncertainty ranges, and that a projection shows where past trends lead if they continue; it does not account for known upcoming changes such as federal budget or policy shifts.
 - Do not give financial, budget, legal or investment advice.
@@ -416,7 +416,7 @@ ${contents}`;
         ...BASE_LAYOUT, showlegend: names.length > 1, barmode: 'group',
         title: { text: plain(spec.title), font: { size: 15 } }, margin: { l: 70, r: 20, t: 40, b: 50 },
         xaxis: { ...BASE_LAYOUT.xaxis, dtick: undefined, type: typeof traces[0]?.x[0] === 'number' && spec.x.toLowerCase().includes('year') ? 'linear' : undefined },
-        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: plain(spec.y_label) } },
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: plain(spec.y_label) }, tickformat: ',.0f' },
       }, CONFIG);
     }
 

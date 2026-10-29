@@ -2,7 +2,8 @@
 #
 # Table 2: R&D expenditures by source of funds, all institutions (standard and short form).
 # Table 12: R&D expenditures by type of cost, standard-form institutions.
-# Both are in thousands of dollars, the same unit as the microdata.
+# NCSES publishes both in thousands of dollars, like the microdata; build.R multiplies both
+# by 1,000, so they are compared in whole dollars and must agree to the thousand.
 
 # Published measure -> questionnaire numbers that sum to it, and the forms they cover.
 # source_table is filled in from release.yml when validate() runs.
@@ -39,7 +40,7 @@ validate <- function(con, funds_source, cost_source) {
     m <- merge(want, have, by = "year", all.x = TRUE, suffixes = c("_published", "_microdata"))
     m$v_microdata[is.na(m$v_microdata)] <- 0
     checked <- checked + nrow(m)
-    bad <- m[abs(m$v_microdata - m$v_published) > 0.5, ]
+    bad <- m[abs(m$v_microdata - m$v_published) > 500, ]
     if (nrow(bad)) problems <- c(problems, sprintf("%s, %s %d: microdata %s vs published %s", checks$source_table[i], checks$measure[i], bad$year,
                                                    format(bad$v_microdata, big.mark = ","), format(bad$v_published, big.mark = ",")))
   }

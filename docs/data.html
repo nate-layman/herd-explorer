@@ -73,7 +73,8 @@
       <a href="data/metrics.parquet">Measures (Parquet)</a>
       <a href="data/facts.parquet">Survey values (Parquet)</a>
     </div>
-    <p class="chart-note">Dollar values are in thousands of nominal dollars. The Excel file includes a README, the measure
+    <p class="chart-note">Dollar values are in whole nominal dollars. NCSES publishes HERD in thousands of dollars; HERD Explorer
+      multiplies by 1,000, so $1,234 thousand in an NCSES table is $1,234,000 here. The Excel file includes a README, the measure
       definitions and the source list. On the Explore page you can also export any table view you build.</p>
 
     <h2>Sources</h2>
@@ -135,7 +136,7 @@
       SELECT year, count(DISTINCT inst_id) AS n, sum(value) AS total FROM metrics
       WHERE measure_id = 'source_all_r_d' AND year = (SELECT max(year) FROM metrics) GROUP BY year`);
     if (size) $('survey-size').textContent =
-      `In FY ${size.year}, ${Number(size.n).toLocaleString()} institutions reported ${fmt(size.total, 'thousands_usd').replace('B', ' billion')} in R&D.`;
+      `In FY ${size.year}, ${Number(size.n).toLocaleString()} institutions reported ${fmt(size.total, 'dollars')} in R&D.`;
 
     const sources = await query('SELECT * FROM sources');
     $('sources').innerHTML = '<tr><th>Used for</th><th>Publisher</th><th>Title</th><th>Downloaded</th></tr>' +

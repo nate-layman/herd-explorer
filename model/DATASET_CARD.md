@@ -18,7 +18,7 @@ Simulated projections of research and development spending at U.S. colleges and 
 
 ## Files
 
-- `<measure_id>.parquet`: 200 simulated futures per institution and year. Columns: `inst_id` (NCSES HERD institution ID), `year`, `draw` (1 to 200), `value` (thousands of nominal dollars). Rows are sorted by institution. To get a range for any group of institutions, add the institutions' values within each draw, then take percentiles across draws.
+- `<measure_id>.parquet`: 200 simulated futures per institution and year. Columns: `inst_id` (NCSES HERD institution ID), `year`, `draw` (1 to 200), `value` (whole nominal dollars; NCSES publishes HERD in thousands, multiplied by 1,000 here). Rows are sorted by institution. To get a range for any group of institutions, add the institutions' values within each draw, then take percentiles across draws.
 - `by_group/<measure_id>.parquet`: the same draws already summed for every group the site shows (`split` is empty for the national total, or `sector`, `control`, `state`, `msi`, `hbcu`, `medical_school`, `land_grant`; `grp` is the group). Institutions the model did not project are included at their last reported value.
 - `by_institution/inst_id=<id>/data_0.parquet`: every measure's draws for one institution (`measure_id`, `year`, `draw`, `value`).
 - `model_info.parquet`: one row per measure, with whether it was modeled, the reason if not, and fitted parameters.

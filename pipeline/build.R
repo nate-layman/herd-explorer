@@ -76,6 +76,8 @@ on.exit(dbDisconnect(con, shutdown = TRUE), add = TRUE)
 # --- HERD microdata ------------------------------------------------------------
 # Every column is read as text; NCSES files vary slightly by year and form.
 # Most files are UTF-8; any that are not are Windows-1252 and get a UTF-8 copy.
+# NCSES reports dollar amounts in thousands. They are multiplied by 1,000 here, once,
+# so every table, download and projection is in whole dollars.
 files$csv <- vapply(files$csv, function(f) {
   lines <- readLines(f, warn = FALSE)
   if (all(validUTF8(lines))) return(f)
@@ -99,16 +101,19 @@ invisible(dbExecute(con, "
     question,
     \"row\"                      AS row_label,
     NULLIF(\"column\", '')       AS column_label,
-    TRY_CAST(data AS DOUBLE)     AS value,
+    TRY_CAST(data AS DOUBLE) * CASE WHEN unit = 'thousands_usd' THEN 1000 ELSE 1 END AS value,
     NULLIF(status, '')           AS status,
-    CASE
-      WHEN questionnaire_no = '01.1' THEN 'code'
-      WHEN questionnaire_no = '13'   THEN 'dollars'
-      WHEN questionnaire_no = '15'   THEN 'headcount'
-      WHEN questionnaire_no = '16'   THEN 'fte'
-      ELSE 'thousands_usd'
-    END                          AS unit
-  FROM raw
+    CASE WHEN unit = 'thousands_usd' THEN 'dollars' ELSE unit END AS unit
+  FROM (
+    SELECT *,
+      CASE
+        WHEN questionnaire_no = '01.1' THEN 'code'
+        WHEN questionnaire_no = '13'   THEN 'dollars'
+        WHEN questionnaire_no = '15'   THEN 'headcount'
+        WHEN questionnaire_no = '16'   THEN 'fte'
+        ELSE 'thousands_usd'
+      END AS unit
+    FROM raw)
   ORDER BY year, inst_id, question_no
 "))
 
@@ -182,7 +187,9 @@ published <- published[!is.na(published$year) & !is.na(published$value), ]
 # Table 12 repeats "Recovered" and "Unrecovered" under indirect costs; name them fully
 published$measure[published$measure == "Recovered"] <- "Indirect costs: recovered"
 published$measure[published$measure == "Unrecovered"] <- "Indirect costs: unrecovered"
-published$unit <- "thousands_usd"
+# Published in thousands of dollars, like the microdata; whole dollars here
+published$value <- published$value * 1000
+published$unit <- "dollars"
 dbWriteTable(con, "national_published", published)
 
 # --- COGR federal research requirements ----------------------------------------
@@ -258,7 +265,7 @@ bad <- dbGetQuery(con, "SELECT o.inst_id, o.herd_name FROM carnegie_overrides o
                         WHERE o.carnegie_unitid IS NOT NULL AND c.ipeds_unitid IS NULL")
 if (nrow(bad)) stop("crosswalk IDs not found in Carnegie 2021: ", paste(bad$herd_name, collapse = "; "))
 unclassified <- dbGetQuery(con, "
-  SELECT count(DISTINCT g.inst_id) AS n, coalesce(sum(f.value), 0) / 1e3 AS rd_m
+  SELECT count(DISTINCT g.inst_id) AS n, coalesce(sum(f.value), 0) / 1e6 AS rd_m
   FROM institution_groups g LEFT JOIN facts f ON f.inst_id = g.inst_id AND f.question_no = '01.g' AND f.year = %d
   WHERE g.sector = 'Not classified'" |> sprintf(last_year))
 message(sprintf("Not classified: %d institutions, $%.0fM of FY %d R&D", unclassified$n, unclassified$rd_m, last_year))

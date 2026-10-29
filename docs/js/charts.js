@@ -24,26 +24,20 @@ export const BASE_LAYOUT = {
   margin: { l: 70, r: 30, t: 20, b: 50 },
   hovermode: 'x unified',
   xaxis: { dtick: 2, showgrid: false, linecolor: '#bbb', ticks: 'outside' },
-  yaxis: { gridcolor: '#ececec', zeroline: false },
+  yaxis: { gridcolor: '#ececec', zeroline: false, automargin: true },
   legend: { orientation: 'h', y: -0.15 },
 };
 
 export const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
 
-// Format a value given its unit; dollars arrive in thousands
+// Format a value given its unit: whole dollars or whole counts, with commas
 export function fmt(value, unit) {
   if (value == null || Number.isNaN(value)) return '';
-  if (unit === 'thousands_usd') {
-    const d = value * 1000;
-    if (Math.abs(d) >= 1e9) return `$${(d / 1e9).toFixed(2)}B`;
-    if (Math.abs(d) >= 1e6) return `$${(d / 1e6).toFixed(1)}M`;
-    return `$${Math.round(d / 1e3).toLocaleString()}K`;
-  }
-  return Math.round(value).toLocaleString();
+  return `${unit === 'dollars' ? '$' : ''}${Math.round(value).toLocaleString()}`;
 }
 
 export const unitAxis = unit => ({
-  thousands_usd: 'Dollars',
+  dollars: 'Dollars',
   headcount: 'People',
   fte: 'Full-time equivalents',
 }[unit] ?? '');

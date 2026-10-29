@@ -17,7 +17,7 @@ An interactive site for exploring the NCSES Higher Education Research and Develo
 ## Data
 
 - Source: NCSES public microdata, one standard-form and one short-form file per year: https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development
-- Long format: institution, year, question, row, column, value (thousands of dollars, or counts for personnel), plus institution attributes (state, control, HBCU, medical school, highest degree).
+- Long format: institution, year, question, row, column, value (whole dollars, converted from the thousands NCSES publishes, or counts for personnel), plus institution attributes (state, control, HBCU, medical school, highest degree).
 - Pipeline output:
   - `docs/data/herd.parquet`: the tidy fact table, for DuckDB-WASM.
   - `docs/data/institutions.parquet`: one row per institution and year with attributes.
