@@ -48,6 +48,11 @@
       --psp-charts--series-7--color: #6250d6; --psp-charts--series-8--color: #e34948;
       --psp-charts--gridline--color: #ececec;
     }
+    #panel-chart { position: relative; }
+    #gw-tip { position: absolute; z-index: 10; max-width: 20rem; padding: 0.55rem 2rem 0.55rem 0.8rem; border-radius: 0.4rem;
+      background: var(--ink); color: #fff; font-size: 0.85rem; line-height: 1.4; box-shadow: 0 4px 14px rgb(0 0 0 / 0.18); }
+    #gw-tip::before { content: ""; position: absolute; top: -6px; left: 1.2rem; border: 6px solid transparent; border-top: 0; border-bottom-color: var(--ink); }
+    #gw-tip .close { position: absolute; top: 0.2rem; right: 0.4rem; font: inherit; font-size: 1.1rem; line-height: 1; border: none; background: none; color: #fff; cursor: pointer; }
     #gw { min-height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; }
   </style>
 </head>
@@ -93,13 +98,15 @@
     <section id="panel-chart" class="panel" role="tabpanel" aria-labelledby="tab-chart" hidden>
       <div class="presets" id="gw-examples">
         <span>Examples:</span>
-        <button data-chart="4">Start your own</button>
-        <button data-chart="0" aria-pressed="true">R&amp;D by institution type</button>
+        <button data-chart="4" aria-pressed="true">Start your own</button>
+        <button data-chart="0">R&amp;D by institution type</button>
         <button data-chart="1">NIH funding by institution type</button>
         <button data-chart="2">States, FY <span data-meta="last_year">2024</span></button>
         <button data-chart="3">Federal vs. business funding, FY <span data-meta="last_year">2024</span></button>
         <button class="help">How to build your own</button>
       </div>
+      <div id="gw-tip" role="status" hidden><button class="close" aria-label="Close tip">&times;</button>
+        Not sure where to start? Click an example to open a ready-made chart you can change.</div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
         column, in thousands of dollars (personnel in people). Open an example and change it, or start your own: try
         <em>year</em> on the x-axis, a measure on the y-axis, and <em>sector</em> or <em>state</em> on color.</p>
@@ -348,12 +355,28 @@
       const scrollBy = window.scrollBy.bind(window);
       window.scrollBy = (...args) => { if (!dragging) scrollBy(...args); };
       const buttons = $('gw-examples');
-      buttons.addEventListener('click', e => {
-        const i = e.target.dataset.chart;
-        if (i === undefined) return;
+      const tip = $('gw-tip');
+      const pick = i => {
         gwRef.current?.openChart(Number(i));
         buttons.querySelectorAll('[data-chart]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.chart === i)));
+      };
+      buttons.addEventListener('click', e => {
+        const i = e.target.closest('[data-chart]')?.dataset.chart;
+        if (i === undefined) return;
+        tip.hidden = true;
+        pick(i);
       });
+      tip.querySelector('.close').onclick = () => { tip.hidden = true; };
+      // Open on the blank chart, with a tip pointing at the examples. This runs once per page load.
+      (function startBlank(tries = 0) {
+        if (!gwRef.current) return tries < 600 && requestAnimationFrame(() => startBlank(tries + 1));
+        pick('4');
+        const first = buttons.querySelector('[data-chart="0"]');
+        tip.style.top = `${first.offsetTop + first.offsetHeight + 8}px`;
+        tip.style.left = `${Math.max(0, first.offsetLeft - 8)}px`;
+        tip.hidden = false;
+        setTimeout(() => { tip.hidden = true; }, 12000);
+      })();
     }
 
     // ── Tabs: each library loads the first time its tab opens ────────────────

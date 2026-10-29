@@ -4,7 +4,7 @@ Drag-and-drop charts, built with Graphic Walker. Each row of its data is one ins
 
 ## Examples
 
-Buttons above the builder open ready-made charts, each in its own tab, which you can change:
+The builder opens on **Start your own**, a blank chart, with a brief tip pointing at the examples. Buttons above the builder open ready-made charts, each in its own tab, which you can change:
 
 - **Start your own**: a blank chart with every field listed.
 - **R&D by institution type**: line chart, year on X, All R&D on Y, sector on Color.
