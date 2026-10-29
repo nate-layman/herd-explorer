@@ -109,7 +109,9 @@
       <div id="gw-tip" role="status" hidden><button class="close" aria-label="Close tip">&times;</button>
         Not sure where to start? Click an example to open a ready-made chart you can change.</div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
-        column, in thousands of dollars (personnel in people). Open an example and change it, or start your own: try
+        column, in dollars (personnel in people). NCSES publishes HERD in thousands of dollars; HERD Explorer multiplies by
+        1,000, so $1,234 thousand in an NCSES table is $1.23M here. Axes read K for thousands, M for millions and B for
+        billions. Open an example and change it, or start your own: try
         <em>year</em> on the x-axis, a measure on the y-axis, and <em>sector</em> or <em>state</em> on color.
         To switch chart type and keep your fields where they are, use the <strong>Mark Type</strong> menu in the toolbar.
         The <strong>Auto Viz</strong> strip at the right opens a panel that rebuilds the chart from a recommendation and
@@ -143,7 +145,8 @@
         <li class="recipe">R1 universities' federal funding, by agency<button data-view="r1Agency">Show me</button></li>
       </ul>
       <h3>Chart builder tab</h3>
-      <p>Each row is one institution in one fiscal year. Every measure is its own field, in thousands of dollars.
+      <p>Each row is one institution in one fiscal year. Every measure is its own field, in whole dollars (NCSES
+        publishes thousands; HERD Explorer multiplies by 1,000). Axes read K, M and B for thousands, millions and billions.
         The example buttons above the chart builder open ready-made charts you can change; drag a field off a shelf to
         remove it.</p>
       <ol>
@@ -305,11 +308,12 @@
         import('https://esm.sh/react-dom@19.1.0/client'),
         import('https://esm.sh/@kanaries/graphic-walker@0.5.3?deps=react@19.1.0,react-dom@19.1.0'),
       ]);
-      const catalog = await query('SELECT id, label, category FROM measure_catalog ORDER BY category, label');
+      const catalog = await query('SELECT id, label, category, unit FROM measure_catalog ORDER BY category, label');
       // Column names people will read in the field list
       const colName = m => `${m.category}: ${m.label}`;
+      // HERD reports thousands of dollars; the chart builder shows whole dollars
       const pivotCols = catalog.map(m =>
-        `sum(value) FILTER (WHERE measure_id = '${m.id}') AS "${colName(m).replaceAll('"', '""')}"`).join(',\n');
+        `sum(value${m.unit === 'thousands_usd' ? ' * 1000' : ''}) FILTER (WHERE measure_id = '${m.id}') AS "${colName(m).replaceAll('"', '""')}"`).join(',\n');
       const rows = await query(`
         SELECT m.year, i.name AS institution, i.state, i.sector, i.control AS "public or private",
                i.highest_degree AS "highest degree", i.msi AS "minority-serving", i.hbcu, i.medical_school AS "medical school",
@@ -343,8 +347,16 @@
       const gwRef = React.createRef();
       const storeRef = React.createRef();
       $('gw').innerHTML = '';
-      // Charts fill the chart area instead of Graphic Walker's small default; the toolbar's size button still changes it
-      const full = { size: { mode: 'full', width: 800, height: 600 } };
+      // Charts fill the chart area instead of Graphic Walker's small default; the toolbar's size button still changes it.
+      // Tooltips and table cells show exact amounts with commas.
+      const full = { size: { mode: 'full', width: 800, height: 600 }, format: { numberFormat: ',.2~f' } };
+      // Axis and legend labels read 820K, 45.3M, 1.27B. d3's SI format says G for billions, so swap the letter. Graphic
+      // Walker bundles its own Vega, so a label expression in the theme is the way in. Legends also label categories
+      // and years, so only large numbers are shortened there.
+      const short = "replace(replace(format(datum.value, '.3~s'), 'G', 'B'), 'k', 'K')";
+      const vega = { background: 'transparent', boxplot: { ticks: true },
+        axisQuantitative: { labelExpr: `abs(datum.value) < 1e3 ? datum.label : ${short}` },
+        legend: { labelExpr: `isNumber(datum.value) && abs(datum.value) >= 1e4 ? ${short} : datum.label` } };
       const charts = examples.map(c => normalize(c, fields)).map(c => ({ ...c, layout: { ...c.layout, ...full } }));
       // Charts survive leaving the page and coming back in the same browser tab. A save from another data build is
       // dropped, since its fields may differ.
@@ -352,6 +364,8 @@
       let saved = null;
       try { saved = JSON.parse(sessionStorage.getItem(SAVED)); } catch { }
       if (saved?.built_on !== M.built_on || !saved.charts?.length) saved = null;
+      // Charts saved before numbers were formatted pick up the format
+      saved?.charts.forEach(c => { c.layout = { ...c.layout, format: { ...full.format, ...c.layout?.format } }; });
       const save = () => {
         const store = storeRef.current;
         if (!store) return;
@@ -363,6 +377,7 @@
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
       createRoot($('gw')).render(React.createElement(GraphicWalker, {
         ref: gwRef, storeRef, data: rows, fields, appearance: 'light', chart: saved?.charts ?? charts, defaultConfig: { layout: full },
+        vizThemeConfig: { light: vega, dark: vega },
       }));
       // The measure list has no height limit, so it stretches the builder to ~2000px and leaves fields low on the list
       // far below the shelves. Cap the field list so its measures scroll in place beside the shelves. Graphic Walker
