@@ -25,6 +25,13 @@ The Field List lists the measures alphabetically by category in their own scroll
    The **Auto Viz** panel is different. It starts collapsed to a narrow strip at the right edge; click the strip to open it. Its chart types rebuild the chart from a recommendation, so fields can move between shelves or drop off, for example a field on Color. Use it to explore suggestions, and Undo in the toolbar to go back.
 6. Drag a field off a shelf to remove it.
 
+## Aggregation
+
+The **Aggregation** button in the toolbar (the cube icon, on by default) decides whether rows are combined.
+
+- **On**: institutions are combined into one value for each combination of the fields on the shelves. With year on X-Axis and sector on Color, each point is one sector in one year, adding up its institutions. The word on a measure's shelf ("sum") is how they are combined; click it for Mean, Median, Count, Min, Max, Variance or Standard Deviation. Use this for totals and trends by group.
+- **Off**: every row is drawn as its own mark, and each row is one institution in one fiscal year. Use this to compare institutions one by one, such as a scatter plot with one dot per institution; filter to a single year, or each institution appears once per year. Line charts are rarely useful with aggregation off.
+
 Use **+ New** next to the chart tabs to start another chart; the others stay open.
 
 Charts are kept while you move around the site in the same browser tab: leave Explore and come back, and the chart builder reopens with your charts and the tab you had open. Closing the browser tab clears them. If you close an example's tab, its button above the builder opens a fresh copy.

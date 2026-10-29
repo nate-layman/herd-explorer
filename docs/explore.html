@@ -375,13 +375,11 @@
         }));
       })();
       // The Auto Viz panel's chart types rebuild every shelf from a recommendation, so a field on Color can move or
-      // vanish; the toolbar's Mark Type menu changes only the mark. Start with the panel collapsed so that menu is the
-      // obvious way to switch, and the chart gets the room. The panel's own button reopens it.
-      (function collapseAutoViz(tries = 0) {
-        const button = [...$('gw').querySelectorAll('div')].find(e => e.shadowRoot)?.shadowRoot
-          .querySelector('button[title="Collapse panel"]');
-        if (!button) return tries < 600 && requestAnimationFrame(() => collapseAutoViz(tries + 1));
-        button.click();
+      // vanish; the toolbar's Mark Type menu changes only the mark. Start with Auto Viz off (its toolbar toggle and the
+      // panel share this setting) so that menu is the obvious way to switch, and the chart gets the room.
+      (function autoVizOff(tries = 0) {
+        if (!storeRef.current) return tries < 600 && requestAnimationFrame(() => autoVizOff(tries + 1));
+        storeRef.current.setShowAutoVizPanel(false);
       })();
       // Its drag library (a react-beautiful-dnd fork) scrolls the page when a drag nears the window edge, and if the
       // field list is scrolled too, it then misplaces the shelves and the drop misses. Hold the page still mid-drag.
