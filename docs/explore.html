@@ -338,12 +338,28 @@
         { name: 'Your chart', filters: [] },
       ];
       const gwRef = React.createRef();
+      const storeRef = React.createRef();
       $('gw').innerHTML = '';
       // Charts fill the chart area instead of Graphic Walker's small default; the toolbar's size button still changes it
       const full = { size: { mode: 'full', width: 800, height: 600 } };
       const charts = examples.map(c => normalize(c, fields)).map(c => ({ ...c, layout: { ...c.layout, ...full } }));
+      // Charts survive leaving the page and coming back in the same browser tab. A save from another data build is
+      // dropped, since its fields may differ.
+      const SAVED = 'herd-explorer:chart-builder';
+      let saved = null;
+      try { saved = JSON.parse(sessionStorage.getItem(SAVED)); } catch { }
+      if (saved?.built_on !== M.built_on || !saved.charts?.length) saved = null;
+      const save = () => {
+        const store = storeRef.current;
+        if (!store) return;
+        try {
+          sessionStorage.setItem(SAVED, JSON.stringify({ built_on: M.built_on, index: store.visIndex, charts: store.exportCode() }));
+        } catch { }
+      };
+      addEventListener('pagehide', save);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
       createRoot($('gw')).render(React.createElement(GraphicWalker, {
-        ref: gwRef, data: rows, fields, appearance: 'light', chart: charts, defaultConfig: { layout: full },
+        ref: gwRef, storeRef, data: rows, fields, appearance: 'light', chart: saved?.charts ?? charts, defaultConfig: { layout: full },
       }));
       // The measure list has no height limit, so it stretches the builder to ~2000px and leaves fields low on the list
       // far below the shelves. Cap the field list so its measures scroll in place beside the shelves. Graphic Walker
@@ -365,9 +381,18 @@
       window.scrollBy = (...args) => { if (!dragging) scrollBy(...args); };
       const buttons = $('gw-examples');
       const tip = $('gw-tip');
+      const press = name => buttons.querySelectorAll('[data-chart]').forEach(b =>
+        b.setAttribute('aria-pressed', String(charts[b.dataset.chart].name === name)));
+      // Examples are found by name, since tabs may have been added, closed or restored; a closed one is added back
       const pick = i => {
-        gwRef.current?.openChart(Number(i));
-        buttons.querySelectorAll('[data-chart]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.chart === i)));
+        const store = storeRef.current;
+        let k = store.exportCode().findIndex(c => c.name === charts[i].name);
+        if (k < 0) {
+          store.importCode([...store.exportCode(), charts[i]]);
+          k = store.exportCode().length - 1;
+        }
+        gwRef.current.openChart(k);
+        press(charts[i].name);
       };
       buttons.addEventListener('click', e => {
         const i = e.target.closest('[data-chart]')?.dataset.chart;
@@ -376,9 +401,16 @@
         pick(i);
       });
       tip.querySelector('.close').onclick = () => { tip.hidden = true; };
-      // Open on the blank chart, with a tip pointing at the examples. This runs once per page load.
-      (function startBlank(tries = 0) {
-        if (!gwRef.current) return tries < 600 && requestAnimationFrame(() => startBlank(tries + 1));
+      // Reopen the saved charts where they were left. Otherwise open on the blank chart, with a tip pointing at the
+      // examples, once per page load.
+      (function start(tries = 0) {
+        if (!gwRef.current || !storeRef.current) return tries < 600 && requestAnimationFrame(() => start(tries + 1));
+        if (saved) {
+          const k = Math.min(Math.max(0, saved.index ?? 0), saved.charts.length - 1);
+          gwRef.current.openChart(k);
+          press(saved.charts[k].name);
+          return;
+        }
         pick('5');
         const first = buttons.querySelector('[data-chart="0"]');
         tip.style.top = `${first.offsetTop + first.offsetHeight + 8}px`;
@@ -397,11 +429,16 @@
         $(`panel-${n}`).hidden = n !== name;
       }
       history.replaceState(null, '', `#${name}`);
+      try { sessionStorage.setItem(TAB, name); } catch { }
       loaded[name] ??= loaders[name]();
     }
     $('tab-table').onclick = () => open('table');
     $('tab-chart').onclick = () => open('chart');
-    open(location.hash === '#chart' ? 'chart' : 'table');
+    // A link's #table or #chart wins; otherwise reopen the tab last used in this browser tab
+    const TAB = 'herd-explorer:explore-tab';
+    let last = null;
+    try { last = sessionStorage.getItem(TAB); } catch { }
+    open(location.hash === '#chart' || (!location.hash && last === 'chart') ? 'chart' : 'table');
   </script>
 </body>
 </html>

@@ -227,6 +227,71 @@ ORDER BY m.year</pre></li>
     const catalog = await query('SELECT id, label, category, unit, coverage FROM measure_catalog ORDER BY category, label');
     const measureLabel = new Map(catalog.map(m => [m.id, m.label]));
     const sectors = (await query('SELECT DISTINCT sector FROM institution_latest ORDER BY 1')).map(r => r.sector);
+    // Worked queries for the model to adapt. Each must run as written; they are in the prompt verbatim.
+    const [F, L] = [M.first_year, M.last_year];
+    const SQL_EXAMPLES = [
+      { title: 'Top 10 institutions by total R&D in the last year, with growth since the first year',
+        sql: `SELECT i.name,
+       MAX(m.value) FILTER (WHERE m.year = ${L}) AS rd_${L},
+       MAX(m.value) FILTER (WHERE m.year = ${F}) AS rd_${F},
+       rd_${L} / rd_${F} - 1 AS growth
+FROM metrics m JOIN institution_latest i USING (inst_id)
+WHERE m.measure_id = 'source_all_r_d' AND m.year IN (${F}, ${L})
+GROUP BY i.inst_id, i.name
+ORDER BY rd_${L} DESC NULLS LAST LIMIT 10` },
+      { title: 'Mean and median per institution by group, with the gap (use AVG and MEDIAN over metrics rows, not total / count)',
+        sql: `SELECT m.year,
+       AVG(m.value) FILTER (WHERE i.land_grant) AS mean_land_grant,
+       AVG(m.value) FILTER (WHERE NOT i.land_grant) AS mean_other,
+       MEDIAN(m.value) FILTER (WHERE i.land_grant) AS median_land_grant,
+       MEDIAN(m.value) FILTER (WHERE NOT i.land_grant) AS median_other,
+       mean_other - mean_land_grant AS mean_gap,
+       COUNT(*) FILTER (WHERE i.land_grant) AS n_land_grant,
+       COUNT(*) FILTER (WHERE NOT i.land_grant) AS n_other
+FROM metrics m JOIN institution_latest i USING (inst_id)
+WHERE i.sector = 'R1' AND m.measure_id = 'source_federal_government'
+GROUP BY m.year ORDER BY m.year` },
+      { title: 'Share of a group\'s R&D from one source, each year',
+        sql: `SELECT m.year,
+       SUM(m.value) FILTER (WHERE m.measure_id = 'source_federal_government')
+         / SUM(m.value) FILTER (WHERE m.measure_id = 'source_all_r_d') AS federal_share
+FROM metrics m JOIN institution_latest i USING (inst_id)
+WHERE i.hbcu AND m.measure_id IN ('source_federal_government', 'source_all_r_d')
+GROUP BY m.year ORDER BY m.year` },
+      { title: 'National total each year, with the change from the year before, an index (first year = 100) and the peak year',
+        sql: `WITH t AS (
+  SELECT year, SUM(value) AS total FROM metrics WHERE measure_id = 'agency_nsf' GROUP BY year)
+SELECT year, total,
+       total - LAG(total) OVER (ORDER BY year) AS change,
+       100 * total / FIRST(total ORDER BY year) OVER () AS index_${F},
+       total = MAX(total) OVER () AS is_peak
+FROM t ORDER BY year` },
+      { title: 'Average annual growth rate by state, first to last year (say so when the starting amount is small, since growth from a small base looks large)',
+        sql: `WITH s AS (
+  SELECT i.state,
+         SUM(m.value) FILTER (WHERE m.year = ${F}) AS first_total,
+         SUM(m.value) FILTER (WHERE m.year = ${L}) AS last_total
+  FROM metrics m JOIN institution_latest i USING (inst_id)
+  WHERE m.measure_id = 'source_institution_funds' AND m.year IN (${F}, ${L})
+  GROUP BY i.state)
+SELECT state, first_total, last_total,
+       POWER(last_total / first_total, 1.0 / (${L} - ${F})) - 1 AS annual_growth
+FROM s WHERE first_total > 0
+ORDER BY annual_growth DESC LIMIT 10` },
+      { title: 'Top 3 institutions within each group (here each state)',
+        sql: `SELECT i.state, i.name, m.value,
+       RANK() OVER (PARTITION BY i.state ORDER BY m.value DESC) AS rank_in_state
+FROM metrics m JOIN institution_latest i USING (inst_id)
+WHERE m.measure_id = 'source_all_r_d' AND m.year = ${L}
+QUALIFY rank_in_state <= 3
+ORDER BY i.state, rank_in_state` },
+      { title: 'Named institutions side by side over time',
+        sql: `SELECT m.year, i.name, m.value
+FROM metrics m JOIN institution_latest i USING (inst_id)
+WHERE m.measure_id = 'agency_nsf'
+  AND (i.name ILIKE '%University of Idaho%' OR i.name ILIKE '%Boise State%' OR i.name ILIKE '%Idaho State%')
+ORDER BY m.year, i.name` },
+    ];
     const SYSTEM = `You answer questions about the NCSES Higher Education Research and Development (HERD) Survey, FY ${M.first_year} to FY ${M.last_year}, by writing DuckDB SQL that runs in the user's browser. You also help people use this site, HERD Explorer, and explain how its data and projections were made.
 
 TABLES (DuckDB SQL; views over Parquet):
@@ -245,12 +310,18 @@ RULES
 - Put each query in a fenced block marked sql. Write one query per block, SELECT or WITH only. Join metrics to institution_latest on inst_id for names and groups.
 - Use names with ILIKE for institutions (e.g. name ILIKE '%University of Idaho%'), and check the result is the institution you meant. To match several names, join ILIKE conditions with OR; ILIKE ANY is not supported.
 - National totals are sums over all institutions. Personnel counts exist only for 2022 to ${M.last_year}.
+- institution_latest has no year column. For a per-institution average, median or count in a year, use AVG(value), MEDIAN(value) or COUNT(*) over the metrics rows for that year and group; each row is one institution that reported. Never divide a total by a count from institution_latest: it includes institutions that did not report that year, which makes averages too low. For averages, also consider the median, since a few very large institutions can pull a mean up.
+- When you describe a pattern (which group leads, the largest gap, a peak, the fastest growth), compute it in the query, for example as a difference column, rather than reading it off a table.
+- Adapt the EXAMPLE QUERIES below; they show the usual ways to compare years, groups and institutions.
 - After you see query results, answer in plain language in a few sentences. Report dollars in readable units ($1.2 billion, $45.3 million). Say which years and which measure you used. Never invent numbers that were not in the results; if the data cannot answer the question, say so.
 - If a chart would help, put each chart in its own fenced block marked chart, containing valid JSON: {"type": "line"|"bar"|"scatter", "sql": "<a SELECT>", "x": "<column>", "y": "<column, or a list of columns for one line each>", "series": "<optional column whose values split the data into lines or bars>", "title": "<short title>", "y_label": "<axis label>"}. Use either a list of y columns or series, not both. Keep to 8 lines or fewer. Prefer millions of dollars on charts.
 - Write plainly. Do not use em dashes.
 - The data stop at FY ${M.last_year}. For questions about the future, say that the Trends and Compare pages show model projections with uncertainty ranges, and that a projection shows where past trends lead if they continue; it does not account for known upcoming changes such as federal budget or policy shifts.
 - Do not give financial, budget, legal or investment advice.
 - For help using the site (building a pivot table or chart on Explore, comparing institutions, downloads) or questions about how the data were built or the projections modeled, first ask for the help documents you need from the CONTENTS below, usually one or two: reply with only a fenced block marked docs listing one file name per line, and you will get their text. Then answer from that text, without SQL. Name the page and the exact buttons, dropdowns and fields to use, as steps, and link the page with a relative link such as [Explore](explore.html#table), [Chart builder](explore.html#chart), [Compare](compare.html), [About the model](model.html) or [About HERD](data.html). Only describe controls that appear in the documents; if they do not cover something, say so. Do not request documents for ordinary data questions.
+
+EXAMPLE QUERIES (patterns to adapt, not answers)
+${SQL_EXAMPLES.map(e => `-- ${e.title}\n${e.sql}`).join('\n\n')}
 
 CONTENTS of the help documents:
 ${contents}`;
@@ -349,18 +420,39 @@ ${contents}`;
       }, CONFIG);
     }
 
-    function addMessage(cls, html) {
+    function addMessage(cls, html, scroll = true) {
       const div = document.createElement('div');
       div.className = `msg ${cls}`;
       div.innerHTML = html;
       $('messages').appendChild(div);
-      div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      if (scroll) div.scrollIntoView({ behavior: 'smooth', block: 'end' });
       return div;
+    }
+
+    // An answer, with its charts drawn by running their queries in the browser
+    async function addAnswer(html, charts, scroll = true) {
+      const msg = addMessage('model', html, scroll);
+      for (const spec of charts) {
+        const el = document.createElement('div');
+        el.className = 'ask-chart';
+        msg.insertBefore(el, msg.querySelector('details') ?? msg.lastChild);
+        await renderChart(el, spec);
+      }
     }
 
     // ── Conversation ────────────────────────────────────────────────────────
     let history = [];
     const MAX_ROUNDS = 3;
+
+    // The conversation survives leaving the page and coming back in the same browser tab: what the model has seen
+    // (history) and what is on screen (transcript, with chart specs rather than drawn charts). A save from another
+    // data build is dropped, since its answers describe other numbers.
+    const SAVED = 'herd-explorer:ask';
+    let transcript = [];
+    function record(cls, html, charts = []) {
+      transcript.push({ cls, html, charts });
+      try { sessionStorage.setItem(SAVED, JSON.stringify({ built_on: M.built_on, history, transcript })); } catch { }
+    }
 
     // Results go back to the model as text, capped so the request stays small
     const resultsForModel = results => results.map((r, i) => {
@@ -374,6 +466,7 @@ ${contents}`;
     async function ask(question) {
       if (!getKey()) { addMessage('error', 'Enter an API key above first, or open this page from a link that includes one.'); return; }
       addMessage('user', esc(question));
+      record('user', esc(question));
       const thinking = addMessage('thinking', 'Thinking&hellip;');
       $('send').disabled = true;
       try {
@@ -425,17 +518,14 @@ ${contents}`;
         const readNote = sources.length ? `<p class="answer-note">Read: ${sources.map(esc).join(', ')}</p>` : '';
         const roundsNote = outOfRounds ? `<p class="answer-note">This answer used all ${MAX_ROUNDS} query attempts. ` +
           'Open the last query below to check what it returned.</p>' : '';
-        const msg = addMessage('model', body + readNote + roundsNote + queries +
-          '<p class="answer-note">AI-generated answer from HERD Survey data. Check important numbers before relying on them.</p>');
-        for (const spec of charts) {
-          const el = document.createElement('div');
-          el.className = 'ask-chart';
-          msg.insertBefore(el, msg.querySelector('details') ?? msg.lastChild);
-          await renderChart(el, spec);
-        }
+        const html = body + readNote + roundsNote + queries +
+          '<p class="answer-note">AI-generated answer from HERD Survey data. Check important numbers before relying on them.</p>';
+        record('model', html, charts);
+        await addAnswer(html, charts);
       } catch (e) {
         thinking.remove();
         addMessage('error', esc(e.message));
+        record('error', esc(e.message));
       } finally {
         $('send').disabled = false;
       }
@@ -453,7 +543,21 @@ ${contents}`;
     $('presets').querySelectorAll('button').forEach(b => b.onclick = () => ask(b.textContent));
     $('send').onclick = () => { const q = $('question').value.trim(); if (q) { $('question').value = ''; ask(q); } };
     $('question').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('send').onclick(); } });
-    $('reset').onclick = () => { history = []; $('messages').innerHTML = ''; };
+    $('reset').onclick = () => {
+      history = []; transcript = []; $('messages').innerHTML = '';
+      try { sessionStorage.removeItem(SAVED); } catch { }
+    };
+
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(SAVED)); } catch { }
+    if (saved?.built_on === M.built_on && saved.transcript?.length) {
+      history = saved.history ?? [];
+      transcript = saved.transcript;
+      for (const m of transcript) {
+        if (m.cls === 'model') await addAnswer(m.html, m.charts ?? [], false);
+        else addMessage(m.cls, m.html, false);
+      }
+    }
   </script>
 </body>
 </html>

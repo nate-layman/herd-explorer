@@ -26,6 +26,8 @@ The Field List lists the measures alphabetically by category in their own scroll
 
 Use **+ New** next to the chart tabs to start another chart; the others stay open.
 
+Charts are kept while you move around the site in the same browser tab: leave Explore and come back, and the chart builder reopens with your charts and the tab you had open. Closing the browser tab clears them. If you close an example's tab, its button above the builder opens a fresh copy.
+
 ## Tables in the chart builder
 
 The Text Table mark makes a crosstab: dimensions on the axes and a measure as values. For nested grouping with subtotals, many measures at once, or CSV export, the Table tab is easier (pivot-tables.md).
