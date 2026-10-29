@@ -110,7 +110,7 @@
         Not sure where to start? Click an example to open a ready-made chart you can change.</div>
       <p class="chart-note" style="margin:0 0 0.6rem">Each row is one institution in one fiscal year; every measure is a
         column, in whole dollars (personnel in people). NCSES publishes HERD in thousands of dollars; HERD Explorer
-        multiplies by 1,000, so $1,234 thousand in an NCSES table is $1,234,000 here. Axes read K for thousands, M for millions and B for
+        multiplies by 1,000, so $1,234 thousand in an NCSES table is $1,234,000 here. Axes read k for thousands, M for millions and B for
         billions. Open an example and change it, or start your own: try
         <em>year</em> on the x-axis, a measure on the y-axis, and <em>sector</em> or <em>state</em> on color.
         To switch chart type and keep your fields where they are, use the <strong>Mark Type</strong> menu in the toolbar.
@@ -146,7 +146,7 @@
       </ul>
       <h3>Chart builder tab</h3>
       <p>Each row is one institution in one fiscal year. Every measure is its own field, in whole dollars (NCSES
-        publishes thousands; HERD Explorer multiplies by 1,000). Axes read K, M and B for thousands, millions and billions.
+        publishes thousands; HERD Explorer multiplies by 1,000). Axes read k, M and B for thousands, millions and billions.
         The example buttons above the chart builder open ready-made charts you can change; drag a field off a shelf to
         remove it.</p>
       <ol>
@@ -348,10 +348,10 @@
       // Charts fill the chart area instead of Graphic Walker's small default; the toolbar's size button still changes it.
       // Tooltips and table cells show exact amounts with commas.
       const full = { size: { mode: 'full', width: 800, height: 600 }, format: { numberFormat: ',.2~f' } };
-      // Axis and legend labels read 820K, 45.3M, 1.27B. d3's SI format says G for billions, so swap the letter. Graphic
+      // Axis and legend labels read 820k, 45.3M, 1.27B, like the Plotly charts. d3's SI format says G for billions, so swap the letter. Graphic
       // Walker bundles its own Vega, so a label expression in the theme is the way in. Legends also label categories
       // and years, so only large numbers are shortened there.
-      const short = "replace(replace(format(datum.value, '.3~s'), 'G', 'B'), 'k', 'K')";
+      const short = "replace(format(datum.value, '.3~s'), 'G', 'B')";
       const vega = { background: 'transparent', boxplot: { ticks: true },
         axisQuantitative: { labelExpr: `abs(datum.value) < 1e3 ? datum.label : ${short}` },
         legend: { labelExpr: `isNumber(datum.value) && abs(datum.value) >= 1e4 ? ${short} : datum.label` } };

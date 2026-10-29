@@ -37,14 +37,14 @@ export function fmt(value, unit) {
   return `${unit === 'dollars' ? '$' : ''}${Math.round(value).toLocaleString()}`;
 }
 
-// Shorter dollars for chart hovers: $1.27B, $45.3M, $820K. Counts stay whole.
+// Shorter dollars for chart hovers: $1.27B, $45.3M, $820k, with Plotly's lowercase k. Counts stay whole.
 export function short(value, unit) {
   if (value == null || Number.isNaN(value)) return '';
   if (unit !== 'dollars') return fmt(value, unit);
   const a = Math.abs(value);
   if (a >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
   if (a >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
-  if (a >= 1e3) return `$${Math.round(value / 1e3).toLocaleString()}K`;
+  if (a >= 1e3) return `$${Math.round(value / 1e3).toLocaleString()}k`;
   return fmt(value, unit);
 }
 
