@@ -220,8 +220,10 @@
 
       // One-click views so most people never need the settings panel
       const fmt0 = { amount: { number_format: { maximumFractionDigits: 0 } } };
+      // Largest amounts first, and when years run across, the most recent year first
+      const SORT = [['amount', 'desc'], ['year', 'col desc']];
       const base = { plugin: 'Datagrid', columns: ['amount'], aggregates: { amount: 'sum' }, columns_config: fmt0,
-                     split_by: ['year'], sort: [['amount', 'desc']], settings: false };
+                     split_by: ['year'], sort: SORT, settings: false };
       const ALL = [['category', '==', 'Source of funds'], ['measure', '==', 'All R&D']];
       const VIEWS = {
         sector: { ...base, group_by: ['sector'], filter: ALL },
@@ -238,7 +240,7 @@
         // Every row as it is stored: one institution, year and measure
         raw: { plugin: 'Datagrid', group_by: [], split_by: [], filter: [], columns_config: fmt0,
                columns: ['institution', 'state', 'sector', 'year', 'category', 'measure', 'unit', 'amount'],
-               sort: [['institution', 'asc'], ['year', 'asc']], settings: false },
+               sort: [['institution', 'asc'], ['year', 'desc']], settings: false },
       };
       const presets = $('presets');
       const press = name => presets.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
@@ -290,7 +292,7 @@
         await viewer.restore({
           group_by, split_by: $('s0').value ? [$('s0').value] : [],
           filter: m === 'custom' ? cfg.filter : [...measureFilters[m], ...cfg.filter.filter(f => !isMeasure(f))],
-          ...(group_by.length ? { columns: ['amount'], aggregates: { amount: 'sum' }, columns_config: fmt0, sort: [['amount', 'desc']] } : {}),
+          ...(group_by.length ? { columns: ['amount'], aggregates: { amount: 'sum' }, columns_config: fmt0, sort: SORT } : {}),
         });
         press(null);
       });

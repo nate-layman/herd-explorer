@@ -22,7 +22,7 @@ Set them in this order:
 1. **Measure first.** Pick one measure, such as All R&D (under Source of funds) or Department of Energy (under Federal agency). Adding up rows from different measures counts the same dollars twice; for example, All R&D already includes Federal government. To compare several measures side by side, pick "Every Federal agency measure", "Every Field of research measure" or "Every Field of research, federal measure" (categories whose measures do not overlap), and put measure in Rows or Columns.
 2. **Rows**: what runs down the side, for example sector, state or institution.
 3. **then by**, **then by**: nest a second and third level, for example sector then state. Each level gets a subtotal and the grand total is the TOTAL row; click a row to expand or collapse it.
-4. **Columns**: what runs across, usually year. Choose (none) for a single total column.
+4. **Columns**: what runs across, usually year, with the most recent year first. Choose (none) for a single total column.
 
 "(set in More settings)" in the Measure dropdown means the current filter was set in the full panel.
 
