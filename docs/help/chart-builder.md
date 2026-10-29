@@ -14,6 +14,8 @@ Buttons above the builder open ready-made charts, each in its own tab, which you
 
 ## Making a chart
 
+The Field List lists the measures alphabetically by category in their own scrolling box: scroll that box to find a measure, then drag it to a shelf.
+
 1. Drag **year** from the Field List to **X-Axis**.
 2. Drag a measure, such as "Source of funds: All R&D", to **Y-Axis**. Measures are summed by default; use the field's menu on the shelf to change the aggregation.
 3. Drag **sector** or **state** to **Color** for one line or bar per group.

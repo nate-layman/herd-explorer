@@ -329,6 +329,24 @@
       createRoot($('gw')).render(React.createElement(GraphicWalker, {
         ref: gwRef, data: rows, fields, appearance: 'light', chart: examples.map(c => normalize(c, fields)),
       }));
+      // The measure list has no height limit, so it stretches the builder to ~2000px and leaves fields low on the list
+      // far below the shelves. Cap the field list so its measures scroll in place beside the shelves. Graphic Walker
+      // renders in a shadow root, so the rule goes inside it.
+      (function fitFieldList(tries = 0) {
+        const root = [...$('gw').querySelectorAll('div')].find(e => e.shadowRoot)?.shadowRoot;
+        if (!root) return tries < 600 && requestAnimationFrame(() => fitFieldList(tries + 1));
+        root.append(Object.assign(document.createElement('style'), {
+          textContent: '.sm\\:flex-col.sm\\:h-full { max-height: max(420px, calc(100vh - 140px)); }',
+        }));
+      })();
+      // Its drag library (a react-beautiful-dnd fork) scrolls the page when a drag nears the window edge, and if the
+      // field list is scrolled too, it then misplaces the shelves and the drop misses. Hold the page still mid-drag.
+      let dragging = false;
+      $('gw').addEventListener('pointerdown', () => { dragging = true; }, true);
+      addEventListener('pointerup', () => { dragging = false; }, true);
+      addEventListener('pointercancel', () => { dragging = false; }, true);
+      const scrollBy = window.scrollBy.bind(window);
+      window.scrollBy = (...args) => { if (!dragging) scrollBy(...args); };
       const buttons = $('gw-examples');
       buttons.addEventListener('click', e => {
         const i = e.target.dataset.chart;
