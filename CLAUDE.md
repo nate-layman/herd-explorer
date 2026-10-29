@@ -15,6 +15,7 @@ Browser-based explorer for the NCSES HERD Survey, FY 2012 to FY 2024. Static sit
 - `docs/data/` holds the built database (`herd.duckdb`) and Parquet copies of each table. Do not edit these by hand; rebuild them.
 - `pipeline/` builds the data in R. `pipeline/raw/` is downloaded source data and is gitignored.
 - `pipeline/carnegie_overrides.csv` is a hand-checked crosswalk for HERD reporting units without a usable IPEDS ID. Add a row, with a note, when a new unit appears.
+- `pipeline/location_overrides.csv` does the same for latitude and longitude (from the IPEDS directory file otherwise). The build warns when an institution has no location.
 - `model/` fits the projection model and writes simulation draws (R, run once a year).
 
 ## Rebuild the data

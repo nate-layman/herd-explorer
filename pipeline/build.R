@@ -263,6 +263,74 @@ unclassified <- dbGetQuery(con, "
   WHERE g.sector = 'Not classified'" |> sprintf(last_year))
 message(sprintf("Not classified: %d institutions, $%.0fM of FY %d R&D", unclassified$n, unclassified$rd_m, last_year))
 
+# --- Institution locations -----------------------------------------------------
+# Latitude and longitude from the IPEDS directory file (HD) of the year closest to the
+# last year each institution reported to HERD, so closed or merged institutions keep
+# the location they had. Units HERD reports without an IPEDS ID, and units IPEDS does
+# not list (research institutes, military colleges), come from a hand-checked
+# crosswalk; see pipeline/location_overrides.csv.
+hd_url <- "https://nces.ed.gov/ipeds/datacenter/data/HD%d.zip"
+hd_page <- "https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx?year=-1&sid=HD"
+read_hd <- function(y) {
+  zip <- file.path(raw_dir, sprintf("HD%d.zip", y))
+  got <- tryCatch(fetch(sprintf(hd_url, y), zip), error = function(e) { unlink(zip); NULL })
+  if (is.null(got)) { message("IPEDS HD", y, " is not available yet; using the other years"); return(NULL) }
+  lines <- readLines(csv_from_zip(zip), warn = FALSE)
+  if (!all(validUTF8(lines))) lines <- iconv(lines, from = "CP1252", to = "UTF-8")
+  x <- read.csv(text = lines, colClasses = "character", check.names = FALSE)
+  names(x) <- toupper(trimws(sub("^﻿", "", names(x))))
+  data.frame(year = y, unitid = x$UNITID,
+             latitude = suppressWarnings(as.numeric(x$LATITUDE)), longitude = suppressWarnings(as.numeric(x$LONGITUD)))
+}
+hd <- do.call(rbind, lapply(first_year:last_year, read_hd))
+hd <- hd[!is.na(hd$latitude) & !is.na(hd$longitude) & abs(hd$latitude) <= 90 & abs(hd$longitude) <= 180, ]
+dbWriteTable(con, "ipeds_locations", hd, temporary = TRUE)
+loc_overrides <- read.csv(file.path(root, "pipeline", "location_overrides.csv"), colClasses = "character")
+loc_overrides[loc_overrides == ""] <- NA
+loc_overrides$latitude <- as.numeric(loc_overrides$latitude)
+loc_overrides$longitude <- as.numeric(loc_overrides$longitude)
+dbWriteTable(con, "location_overrides", loc_overrides, temporary = TRUE)
+bad <- dbGetQuery(con, "SELECT herd_name FROM location_overrides o
+                        WHERE (o.latitude IS NULL) = (o.ipeds_unitid IS NULL)
+                           OR (o.ipeds_unitid IS NOT NULL AND o.ipeds_unitid NOT IN (SELECT unitid FROM ipeds_locations))")
+if (nrow(bad)) stop("location_overrides.csv rows need either an IPEDS ID found in HD or a latitude and longitude: ", paste(bad$herd_name, collapse = "; "))
+
+# HERD's own IPEDS ID first: the Carnegie crosswalk maps some campuses to a system office
+invisible(dbExecute(con, "
+  CREATE TABLE institution_locations AS
+  WITH ids AS (
+    SELECT inst_id, max(ipeds_unitid) AS ipeds_unitid, max(year) AS last_year
+    FROM institutions GROUP BY inst_id
+  ),
+  keyed AS (
+    SELECT ids.inst_id, ids.last_year, o.latitude AS o_lat, o.longitude AS o_lon,
+           coalesce(o.ipeds_unitid, ids.ipeds_unitid, g.carnegie_unitid) AS unitid
+    FROM ids JOIN institution_groups g USING (inst_id)
+    LEFT JOIN location_overrides o USING (inst_id)
+  ),
+  from_ipeds AS (
+    SELECT k.inst_id, h.latitude, h.longitude, h.year
+    FROM keyed k JOIN ipeds_locations h ON h.unitid = k.unitid
+    QUALIFY row_number() OVER (PARTITION BY k.inst_id ORDER BY abs(h.year - k.last_year), h.year DESC) = 1
+  )
+  SELECT k.inst_id,
+         coalesce(k.o_lat, i.latitude)  AS latitude,
+         coalesce(k.o_lon, i.longitude) AS longitude,
+         CASE WHEN k.o_lat IS NOT NULL THEN 'Entered by HERD Explorer'
+              WHEN i.year IS NOT NULL THEN 'IPEDS HD' || i.year END AS location_source
+  FROM keyed k LEFT JOIN from_ipeds i USING (inst_id)
+  ORDER BY inst_id
+"))
+unlocated <- dbGetQuery(con, sprintf("
+  SELECT i.name FROM institution_locations l JOIN institutions i ON i.inst_id = l.inst_id AND i.year = %d
+  WHERE l.latitude IS NULL", last_year))
+if (nrow(unlocated))
+  warning(sprintf("%d institutions reporting in FY %d have no location; add them to pipeline/location_overrides.csv: %s",
+                  nrow(unlocated), last_year, paste(unlocated$name, collapse = "; ")), call. = FALSE)
+message(sprintf("Located: %d of %d institutions",
+                dbGetQuery(con, "SELECT count(latitude) AS n FROM institution_locations")$n,
+                dbGetQuery(con, "SELECT count(*) AS n FROM institution_locations")$n))
+
 # --- Provenance ----------------------------------------------------------------
 sources <- rbind(
   data.frame(table_name = "facts, institutions", publisher = "NCSES, U.S. National Science Foundation",
@@ -276,7 +344,10 @@ sources <- rbind(
              url = cogr_page, files = "Figure 1 data labels, entered by hand"),
   data.frame(table_name = "carnegie_2021, institution_groups", publisher = "American Council on Education, Carnegie Classification",
              title = "Carnegie Classification of Institutions of Higher Education, 2021 update public data file",
-             url = carnegie_page, files = basename(carnegie_url))
+             url = carnegie_page, files = basename(carnegie_url)),
+  data.frame(table_name = "institution_locations", publisher = "NCES, U.S. Department of Education",
+             title = sprintf("IPEDS Institutional Characteristics, directory information (HD), %d-%d: latitude and longitude", min(hd$year), max(hd$year)),
+             url = hd_page, files = paste(sprintf("HD%d.zip", sort(unique(hd$year))), collapse = "; "))
 )
 sources$built_on <- as.character(Sys.Date())
 dbWriteTable(con, "sources", sources)
@@ -294,7 +365,7 @@ jsonlite::write_json(c(site_meta(release), built_on = as.character(Sys.Date())),
 message("wrote meta.json")
 
 # Parquet copies for downloads and for anyone who prefers files to a database
-for (t in c("facts", "metrics", "measure_catalog", "institutions", "institution_groups", "national_published", "cogr_requirements", "sources")) {
+for (t in c("facts", "metrics", "measure_catalog", "institutions", "institution_groups", "institution_locations", "national_published", "cogr_requirements", "sources")) {
   invisible(dbExecute(con, sprintf("COPY %s TO '%s' (FORMAT parquet, COMPRESSION zstd)", t, file.path(out_dir, paste0(t, ".parquet")))))
 }
 invisible(dbExecute(con, "CHECKPOINT"))

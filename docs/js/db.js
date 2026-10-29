@@ -4,7 +4,7 @@
 import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
 
 const TABLES = [
-  'metrics', 'measure_catalog', 'institutions', 'institution_groups',
+  'metrics', 'measure_catalog', 'institutions', 'institution_groups', 'institution_locations',
   'national_published', 'cogr_requirements', 'sources',
 ];
 
@@ -30,9 +30,11 @@ async function init() {
   // One row per institution: its most recent name and attributes, plus its sector
   await conn.query(`
     CREATE VIEW institution_latest AS
-    SELECT i.* EXCLUDE (year), i.year AS latest_year, g.sector, g.sector_source, g.msi, g.hsi, g.tribal, g.land_grant
+    SELECT i.* EXCLUDE (year), i.year AS latest_year, g.sector, g.sector_source, g.msi, g.hsi, g.tribal, g.land_grant,
+           l.latitude, l.longitude
     FROM (SELECT * FROM institutions QUALIFY row_number() OVER (PARTITION BY inst_id ORDER BY year DESC) = 1) i
-    JOIN institution_groups g USING (inst_id)`);
+    JOIN institution_groups g USING (inst_id)
+    LEFT JOIN institution_locations l USING (inst_id)`);
   return conn;
 }
 

@@ -1,6 +1,6 @@
 # Chart builder: Explore, Chart builder tab (explore.html#chart)
 
-Drag-and-drop charts, built with Graphic Walker. Each row of its data is one institution in one fiscal year. Every measure is its own field named "Category: measure", for example "Source of funds: All R&D" or "Federal agency: NASA", in thousands of dollars (personnel in people). Other fields: year, institution, state, sector, public or private, highest degree, minority-serving, hbcu, medical school, land-grant.
+Drag-and-drop charts, built with Graphic Walker. Each row of its data is one institution in one fiscal year. Every measure is its own field named "Category: measure", for example "Source of funds: All R&D" or "Federal agency: NASA", in thousands of dollars (personnel in people). Other fields: year, institution, state, sector, public or private, highest degree, minority-serving, hbcu, medical school, land-grant, latitude, longitude. Latitude and longitude are each institution's location (see data-sources.md); they are only in the chart builder.
 
 ## Examples
 
@@ -11,6 +11,7 @@ The builder opens on **Start your own**, a blank chart, with a brief tip pointin
 - **NIH funding by institution type**: stacked bars of Health and Human Services (incl. NIH) funding by year and sector.
 - **States, FY {last_year}**: horizontal bars of All R&D by state, largest first, filtered to {last_year}.
 - **Federal vs. business funding, FY {last_year}**: scatter plot, one dot per institution, colored by sector.
+- **Map, lower 48, FY {last_year}**: one dot per institution on a map, sized and colored by All R&D. A filter leaves out Alaska, Hawaii and the territories so the map opens on the continental U.S.; remove it from Filters to show them. To map another measure, drag it onto Color or Size.
 
 ## Making a chart
 

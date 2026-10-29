@@ -69,7 +69,7 @@
       <a href="data/downloads/herd_explorer_wide.xlsx">Excel (XLSX), one row per institution and year</a>
       <a href="data/downloads/herd_explorer_wide.csv">CSV, one row per institution and year</a>
       <a href="data/downloads/herd_explorer_survey_values.csv.zip">Every survey value, long format (CSV, zipped, 25 MB)</a>
-      <a href="data/herd.duckdb">Full database (DuckDB, 32 MB)</a>
+      <a href="data/herd.duckdb">Full database (DuckDB, 42 MB)</a>
       <a href="data/metrics.parquet">Measures (Parquet)</a>
       <a href="data/facts.parquet">Survey values (Parquet)</a>
     </div>
@@ -97,6 +97,9 @@
         means the same institutions throughout. HERD reporting units without a usable IPEDS ID (combined campuses, system
         offices, research institutes) are matched by a <a id="crosswalk" href="#">hand-checked crosswalk</a>. Seven independent
         research institutes and three system offices, which Carnegie does not classify, are labeled by HERD Explorer.</li>
+      <li><strong>Locations</strong> for the chart builder's map come from the IPEDS directory file for the year closest to
+        each institution's last HERD year. Units without an IPEDS record are placed from their street address by a
+        <a id="locations" href="#">hand-checked crosswalk</a>.</li>
       <li><strong>Imputed values.</strong> NCSES imputes some values for nonresponse; the survey-values download keeps NCSES's
         status code for every value (i = imputed by NCSES). HERD Explorer does not impute or fill in any values.</li>
       <li><strong>Dollars</strong> are nominal (not adjusted for inflation).</li>
@@ -124,6 +127,7 @@
     const $ = id => document.getElementById(id);
     $('report').href = REPORT_ERROR;
     $('crosswalk').href = `${REPO}/blob/main/pipeline/carnegie_overrides.csv`;
+    $('locations').href = `${REPO}/blob/main/pipeline/location_overrides.csv`;
     $('disclaimer').textContent = DISCLAIMER;
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 

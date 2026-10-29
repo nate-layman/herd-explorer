@@ -34,6 +34,7 @@ Site text, chart labels, the Ask page and its help documents take their years fr
 - **Expected one Table N workbook**: NCSES renumbered or renamed its tables. Check the table numbers in `release.yml` against the publication.
 - **Download failed**: NCSES may have changed its file addresses. The microdata address pattern is in `pipeline/build.R` (`microdata_url`).
 - **A new HERD reporting unit without an IPEDS ID**: add a row to `pipeline/carnegie_overrides.csv` with a note.
+- **"have no location" warning**: the build names institutions it could not place. Add a row to `pipeline/location_overrides.csv` with their IPEDS ID, or a latitude and longitude from their street address, and a note.
 
 ## Running it on your own computer
 

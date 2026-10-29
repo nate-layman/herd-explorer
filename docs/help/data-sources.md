@@ -30,6 +30,7 @@ All figures come from the public, institution-level microdata files that the Nat
 - **Personnel** counts are released from FY 2022 onward.
 - **Institution type** (sector) is the 2021 Carnegie Classification, held fixed for every year so a group means the same institutions throughout. HERD reporting units without a usable IPEDS ID (combined campuses, system offices, research institutes) are matched by a hand-checked crosswalk. Seven independent research institutes and three system offices, which Carnegie does not classify, are labeled by HERD Explorer.
 - **Imputed values**: NCSES imputes some values for nonresponse (status i), about 0.1 to 0.4 percent of total R&D in a year. They are included as NCSES reports them, which is how the national totals match NCSES's tables. The survey-values download keeps NCSES's status code for every value. HERD Explorer itself does not impute, interpolate or fill in any values; a year an institution did not report is simply missing.
+- **Locations**: latitude and longitude come from the IPEDS directory file (HD) for the year closest to each institution's last HERD year. Units HERD reports without an IPEDS ID, and units IPEDS does not list (research institutes, military colleges), are placed by a hand-checked crosswalk from their street address. Locations are used only by the chart builder's map.
 - **Dollars are nominal**, not adjusted for inflation. Stored values are in thousands of dollars; Explore's Table tab shows whole dollars.
 
 ## Measures
@@ -41,7 +42,7 @@ The About HERD page has a searchable list of every measure with its definition, 
 - Excel (XLSX), one row per institution and year, with a README, measure definitions and the source list
 - CSV, one row per institution and year
 - Every survey value, long format (CSV, zipped, 25 MB)
-- Full database (DuckDB, 32 MB)
+- Full database (DuckDB, 42 MB)
 - Measures (Parquet) and survey values (Parquet)
 
 Any table view built on Explore's Table tab can also be exported as CSV.

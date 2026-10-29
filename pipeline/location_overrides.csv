@@ -1,0 +1,21 @@
+inst_id,herd_name,ipeds_unitid,latitude,longitude,note
+002671,Bard College,189088,,,HERD reports without an IPEDS ID
+008770,Fairleigh Dickinson University,184603,,,HERD reports without an IPEDS ID; Metropolitan Campus (Teaneck)
+029119,Polytechnic University of Puerto Rico,243577,,,HERD reports without an IPEDS ID; IPEDS name Universidad Politecnica de Puerto Rico
+100588,Doane University,181020,,,HERD reports without an IPEDS ID
+003198,Linfield University,209065,,,HERD reports without an IPEDS ID
+001158,Alliant International University,110468,,,HERD reports without an IPEDS ID; San Diego campus
+002230,Woods Hole Oceanographic Institution,,41.54095,-70.64871,"Not in IPEDS; Census geocoder, 266 Woods Hole Rd, Falmouth, MA"
+008907,Desert Research Institute,,39.57126,-119.81102,"Not in IPEDS; Census geocoder, 2215 Raggio Pkwy, Reno, NV"
+019039,University of Maryland Center for Environmental Science,,38.57005,-76.07727,"Not in IPEDS; center of Cambridge, MD (OpenStreetMap), the city HERD reports"
+022635,"Scripps Research Institute, The",,32.8958,-117.24151,"Not in IPEDS; Census geocoder, 10550 N Torrey Pines Rd, La Jolla, CA"
+029169,Uniformed Services University of the Health Sciences,,39.00187,-77.08637,"Not in IPEDS; OpenStreetMap, 4301 Jones Bridge Rd, Bethesda, MD"
+100864,Naval War College,,41.50788,-71.33005,"Not in IPEDS; OpenStreetMap, Newport, RI"
+101481,National Defense University,,38.86609,-77.01498,"Not in IPEDS; OpenStreetMap, 300 5th Ave SW, Washington, DC (Fort McNair)"
+101662,United States Army War College,,40.20998,-77.17629,"Not in IPEDS; Census geocoder, 122 Forbes Ave, Carlisle, PA"
+102013,Van Andel Institute,,42.9694,-85.66657,"Not in IPEDS; Census geocoder, 333 Bostwick Ave NE, Grand Rapids, MI"
+102100,Graduate School of the Stowers Institute for Medical Research,,39.03634,-94.57445,"Not in IPEDS; Census geocoder, 1000 E 50th St, Kansas City, MO"
+101674,"Palmer College of Chiropractic, Port Orange",,29.12229,-81.01825,"Branch of IPEDS 154174 (Davenport, IA); Census geocoder, 4777 City Center Pkwy, Port Orange, FL"
+101753,National Flight Test Institute,,35.05656,-118.15823,"Not in IPEDS; Census geocoder, 1500 Flight Line, Mojave, CA"
+330049,Skidaway Institute of Oceanography,,31.98788,-81.02198,"Not in IPEDS; Census geocoder, 10 Ocean Science Cir, Savannah, GA"
+101726,Marine Corps University,,38.5164,-77.29167,"Not in IPEDS; Census geocoder, 2076 South St, Quantico, VA"

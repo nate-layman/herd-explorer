@@ -98,11 +98,12 @@
     <section id="panel-chart" class="panel" role="tabpanel" aria-labelledby="tab-chart" hidden>
       <div class="presets" id="gw-examples">
         <span>Examples:</span>
-        <button data-chart="4" aria-pressed="true">Start your own</button>
+        <button data-chart="5" aria-pressed="true">Start your own</button>
         <button data-chart="0">R&amp;D by institution type</button>
         <button data-chart="1">NIH funding by institution type</button>
         <button data-chart="2">States, FY <span data-meta="last_year">2024</span></button>
         <button data-chart="3">Federal vs. business funding, FY <span data-meta="last_year">2024</span></button>
+        <button data-chart="4">Map, lower 48, FY <span data-meta="last_year">2024</span></button>
         <button class="help">How to build your own</button>
       </div>
       <div id="gw-tip" role="status" hidden><button class="close" aria-label="Close tip">&times;</button>
@@ -309,12 +310,14 @@
       const rows = await query(`
         SELECT m.year, i.name AS institution, i.state, i.sector, i.control AS "public or private",
                i.highest_degree AS "highest degree", i.msi AS "minority-serving", i.hbcu, i.medical_school AS "medical school",
-               i.land_grant AS "land-grant", ${pivotCols}
+               i.land_grant AS "land-grant", i.latitude, i.longitude, ${pivotCols}
         FROM metrics m JOIN institution_latest i USING (inst_id)
         GROUP BY ALL ORDER BY institution, year`);
       const dims = ['year', 'institution', 'state', 'sector', 'public or private', 'highest degree', 'minority-serving', 'hbcu', 'medical school', 'land-grant'];
       const fields = [
         ...dims.map(d => ({ fid: d, name: d, semanticType: d === 'year' ? 'ordinal' : 'nominal', analyticType: 'dimension' })),
+        // Dimensions, so a map or scatter places each institution instead of summing coordinates
+        ...['latitude', 'longitude'].map(d => ({ fid: d, name: d, semanticType: 'quantitative', analyticType: 'dimension', geoRole: d })),
         ...catalog.map(m => ({ fid: colName(m), name: colName(m), semanticType: 'quantitative', analyticType: 'measure' })),
       ];
       // Booleans read better as words in a chart builder
@@ -328,13 +331,19 @@
         { name: `States, FY ${M.last_year}`, mark: 'bar', y: { field: 'state', sort: 'descending' }, x: ALL, filters: latest },
         { name: `Federal vs. business, FY ${M.last_year}`, mark: 'point', x: 'Source of funds: Federal government',
           y: 'Source of funds: Business', color: 'sector', aggregate: false, filters: latest },
+        // Alaska, Hawaii and the territories would zoom the map out to half the globe; the filter is on the shelf to remove
+        { name: `Map, lower 48, FY ${M.last_year}`, mark: 'poi', latitude: 'latitude', longitude: 'longitude', size: ALL, color: ALL,
+          details: 'institution', filters: [...latest, { field: 'state', notIn: ['AK', 'HI', 'PR', 'VI', 'GU', 'AS'] }], config: { coordSystem: 'geographic' } },
         // filters makes normalize() read this as a terse spec, which fills the field list from the data
         { name: 'Your chart', filters: [] },
       ];
       const gwRef = React.createRef();
       $('gw').innerHTML = '';
+      // Charts fill the chart area instead of Graphic Walker's small default; the toolbar's size button still changes it
+      const full = { size: { mode: 'full', width: 800, height: 600 } };
+      const charts = examples.map(c => normalize(c, fields)).map(c => ({ ...c, layout: { ...c.layout, ...full } }));
       createRoot($('gw')).render(React.createElement(GraphicWalker, {
-        ref: gwRef, data: rows, fields, appearance: 'light', chart: examples.map(c => normalize(c, fields)),
+        ref: gwRef, data: rows, fields, appearance: 'light', chart: charts, defaultConfig: { layout: full },
       }));
       // The measure list has no height limit, so it stretches the builder to ~2000px and leaves fields low on the list
       // far below the shelves. Cap the field list so its measures scroll in place beside the shelves. Graphic Walker
@@ -370,7 +379,7 @@
       // Open on the blank chart, with a tip pointing at the examples. This runs once per page load.
       (function startBlank(tries = 0) {
         if (!gwRef.current) return tries < 600 && requestAnimationFrame(() => startBlank(tries + 1));
-        pick('4');
+        pick('5');
         const first = buttons.querySelector('[data-chart="0"]');
         tip.style.top = `${first.offsetTop + first.offsetHeight + 8}px`;
         tip.style.left = `${Math.max(0, first.offsetLeft - 8)}px`;
