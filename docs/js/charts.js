@@ -24,7 +24,8 @@ export const BASE_LAYOUT = {
   margin: { l: 70, r: 30, t: 20, b: 50 },
   hovermode: 'x unified',
   xaxis: { dtick: 2, showgrid: false, linecolor: '#bbb', ticks: 'outside' },
-  yaxis: { gridcolor: '#ececec', zeroline: false, automargin: true },
+  // Ticks read 500M, 1B, 1.5B rather than d3's 1.5G
+  yaxis: { gridcolor: '#ececec', zeroline: false, automargin: true, exponentformat: 'B' },
   legend: { orientation: 'h', y: -0.15 },
 };
 
@@ -34,6 +35,17 @@ export const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRe
 export function fmt(value, unit) {
   if (value == null || Number.isNaN(value)) return '';
   return `${unit === 'dollars' ? '$' : ''}${Math.round(value).toLocaleString()}`;
+}
+
+// Shorter dollars for chart hovers: $1.27B, $45.3M, $820K. Counts stay whole.
+export function short(value, unit) {
+  if (value == null || Number.isNaN(value)) return '';
+  if (unit !== 'dollars') return fmt(value, unit);
+  const a = Math.abs(value);
+  if (a >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `$${Math.round(value / 1e3).toLocaleString()}K`;
+  return fmt(value, unit);
 }
 
 export const unitAxis = unit => ({

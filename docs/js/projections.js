@@ -88,8 +88,8 @@ export async function institutionBands(measureId, instIds) {
 
 // Plotly traces for one group's band: 90% band, 80% band and the median, joined to
 // the last observed point so the projection starts where the data end.
-// yFormat is the d3 format for hover values, such as '$,.0f' for dollars.
-export function bandTraces(bands, last, color, scale, name, yFormat = ',.0f') {
+// label turns a scaled value into hover text, such as v => short(v, 'dollars').
+export function bandTraces(bands, last, color, scale, name, label = v => Math.round(v).toLocaleString()) {
   const xs = [last.year, ...bands.map(b => b.year)];
   const at = k => [last.value, ...bands.map(b => b[k])].map(scale);
   const fill = (lo, hi, opacity, label) => ([
@@ -102,8 +102,8 @@ export function bandTraces(bands, last, color, scale, name, yFormat = ',.0f') {
     ...fill('p10', 'p90', 0.18, '80% range'),
     { x: xs, y: at('p50'), mode: 'lines', line: { color, width: 2, dash: 'dot' }, name: `${name} (projected)`,
       legendgroup: name, showlegend: false,
-      customdata: xs.map((_, i) => i === 0 ? null : [scale(bands[i - 1].p10), scale(bands[i - 1].p90)]),
-      hovertemplate: `%{y:${yFormat}} projected<br>80% range %{customdata[0]:${yFormat}} to %{customdata[1]:${yFormat}}<extra>%{fullData.legendgroup}</extra>` },
+      customdata: xs.map((_, i) => i === 0 ? null : [bands[i - 1].p50, bands[i - 1].p10, bands[i - 1].p90].map(v => label(scale(v)))),
+      hovertemplate: '%{customdata[0]} projected<br>80% range %{customdata[1]} to %{customdata[2]}<extra>%{fullData.legendgroup}</extra>' },
   ];
 }
 

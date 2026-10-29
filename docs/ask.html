@@ -416,7 +416,7 @@ ${contents}`;
         ...BASE_LAYOUT, showlegend: names.length > 1, barmode: 'group',
         title: { text: plain(spec.title), font: { size: 15 } }, margin: { l: 70, r: 20, t: 40, b: 50 },
         xaxis: { ...BASE_LAYOUT.xaxis, dtick: undefined, type: typeof traces[0]?.x[0] === 'number' && spec.x.toLowerCase().includes('year') ? 'linear' : undefined },
-        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: plain(spec.y_label) }, tickformat: ',.0f' },
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: plain(spec.y_label) } },
       }, CONFIG);
     }
 

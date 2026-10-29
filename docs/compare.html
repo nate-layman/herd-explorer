@@ -46,7 +46,7 @@
     import { renderLayout } from './js/layout.js';
     import { meta } from './js/meta.js';
     import { query, lit } from './js/db.js';
-    import { plotly, PALETTE, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
+    import { plotly, PALETTE, BASE_LAYOUT, CONFIG, short, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
     import { updateToggle, institutionBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
@@ -96,7 +96,7 @@
       const traces = selected.map((sid, k) => {
         const inst = insts.find(i => i.inst_id === sid);
         const pts = rows.filter(r => r.inst_id === sid);
-        return { x: pts.map(p => p.year), y: series(pts), text: pts.map(p => fmt(p.value, m.unit)), name: inst.name,
+        return { x: pts.map(p => p.year), y: series(pts), text: pts.map(p => short(p.value, m.unit)), name: inst.name,
                  type: 'scatter', mode: 'lines+markers', line: { color: PALETTE[k % PALETTE.length], width: 2.5 },
                  marker: { size: 7 }, hovertemplate: mode === 'value' ? '%{text}' : '%{y:.0f} (%{text})' };
       });
@@ -113,7 +113,7 @@
           const base = pts[0].value;
           const scaleP = v => mode === 'index' ? 100 * v / base : v;
           traces.push(...bandTraces(b, pts[pts.length - 1], PALETTE[k % PALETTE.length], scaleP, insts.find(i => i.inst_id === sid).name,
-            mode === 'index' ? '.0f' : m.unit === 'dollars' ? '$,.0f' : ',.0f'));
+            mode === 'index' ? v => v.toFixed(0) : v => short(v, m.unit)));
         });
       }
       $('proj-note').hidden = !($('project').checked && canProject);
@@ -128,7 +128,7 @@
           GROUP BY ALL ORDER BY m.year`);
         for (const s of sectors) {
           const pts = med.filter(r => r.sector === s);
-          traces.push({ x: pts.map(p => p.year), y: series(pts), text: pts.map(p => `${fmt(p.value, m.unit)}, median of ${p.n}`),
+          traces.push({ x: pts.map(p => p.year), y: series(pts), text: pts.map(p => `${short(p.value, m.unit)}, median of ${p.n}`),
                         name: `Median: ${s}`, type: 'scatter', mode: 'lines', line: { color: '#777', width: 1.5, dash: 'dash' },
                         hovertemplate: mode === 'value' ? '%{text}' : '%{y:.0f} (%{text})' });
         }
@@ -138,7 +138,7 @@
       Plotly.react('chart', traces, {
         ...BASE_LAYOUT,
         yaxis: { ...BASE_LAYOUT.yaxis, title: { text: mode === 'index' ? `Index, FY ${M.first_year} = 100` : unitAxis(m.unit) },
-                 tickprefix: mode === 'value' && m.unit === 'dollars' ? '$' : '', tickformat: mode === 'value' ? ',.0f' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
+                 tickprefix: mode === 'value' && m.unit === 'dollars' ? '$' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
         `Source: NCSES HERD Survey public microdata, FY ${M.first_year}-${M.last_year}. Nominal dollars. Institution type from the 2021 Carnegie Classification.`;

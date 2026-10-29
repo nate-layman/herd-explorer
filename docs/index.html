@@ -57,7 +57,7 @@
     import { renderLayout } from './js/layout.js';
     import { meta } from './js/meta.js';
     import { query, lit } from './js/db.js';
-    import { plotly, PALETTE, OTHER, BASE_LAYOUT, CONFIG, fmt, unitAxis } from './js/charts.js';
+    import { plotly, PALETTE, OTHER, BASE_LAYOUT, CONFIG, short, unitAxis } from './js/charts.js';
     import { fillMeasureSelect, measure } from './js/measures.js';
     import { updateToggle, groupBands, bandTraces, DISCLAIMER_SHORT } from './js/projections.js';
 
@@ -109,7 +109,7 @@
         const y = pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null)
                             : mode === 'share' ? 100 * p.value / totals.get(p.year)
                             : p.value);
-        const text = pts.map(p => fmt(p.value, m.unit));
+        const text = pts.map(p => short(p.value, m.unit));
         const color = g.startsWith('All other') || g === 'Unknown' ? OTHER : PALETTE[k % PALETTE.length];
         return { x: pts.map(p => p.year), y, text, name: g, type: 'scatter', mode: 'lines+markers',
                  line: { color, width: 2.5 }, marker: { size: 7, color },
@@ -131,7 +131,7 @@
           const base = pts[0].value;
           const scaleP = v => mode === 'index' ? 100 * v / base : v;
           const color = g.startsWith('All other') || g === 'Unknown' ? OTHER : PALETTE[k % PALETTE.length];
-          traces.push(...bandTraces(b, pts[pts.length - 1], color, scaleP, g, mode === 'index' ? '.0f' : m.unit === 'dollars' ? '$,.0f' : ',.0f'));
+          traces.push(...bandTraces(b, pts[pts.length - 1], color, scaleP, g, mode === 'index' ? v => v.toFixed(0) : v => short(v, m.unit)));
         });
       }
       $('proj-note').hidden = !showProj;
@@ -142,7 +142,7 @@
       if (!$('trend').data) $('trend').innerHTML = '';
       Plotly.react('trend', traces, {
         ...BASE_LAYOUT, showlegend: groups.length > 1,
-        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: yTitle }, tickprefix: mode === 'value' && m.unit === 'dollars' ? '$' : '', tickformat: mode === 'value' ? ',.0f' : '',
+        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: yTitle }, tickprefix: mode === 'value' && m.unit === 'dollars' ? '$' : '',
                  ticksuffix: mode === 'share' ? '%' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('trend-note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
