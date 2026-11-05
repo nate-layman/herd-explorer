@@ -42,11 +42,34 @@ The About HERD page has a searchable list of every measure with its definition, 
 - Excel (XLSX), one row per institution and year, with a README, measure definitions and the source list
 - CSV, one row per institution and year
 - Every survey value, long format (CSV, zipped, 25 MB)
-- Full database (DuckDB, 42 MB)
+- Full database (DuckDB, 45 MB)
 - Measures (Parquet) and survey values (Parquet)
 
 Any table view built on Explore's Table tab can also be exported as CSV.
 
-## Other sources
+## What is HERD and what is not
 
-The Trends page's workload chart uses COGR's "Changes in Federal Research Requirements Since 1991" (Figure 1, updated {cogr_updated}), with data labels entered by hand.
+The site keeps three kinds of data apart. The Data page lists each table with its origin, and the database has the same list in its table_catalog table.
+
+1. **HERD Survey data**: values NCSES released, reshaped but never changed (facts, metrics, institutions, national_published). The only change is the conversion from thousands of dollars to whole dollars.
+2. **Computed from HERD by HERD Explorer**: figures NCSES does not publish but that come only from HERD values, such as ranks and shares (herd_ranks table), sector totals and projections.
+3. **Not HERD**: data from other publishers, for context. These tables are named context_* in the database. The institution groups (sector, minority-serving, land-grant, Carnegie 2025 designation) also come from the Carnegie Classification, not HERD, and locations come from IPEDS. Any chart or Ask answer that uses them names them as a source.
+
+## Ranks (computed from HERD)
+
+For each measure and year, herd_ranks gives every institution's rank among the institutions that reported that measure, nationally and within its state, and its share of the national total. Ties share a rank. Measures asked only on the standard form rank only standard-form institutions. A year an institution did not report has no rank. Ranks are HERD Explorer's calculation, not NCSES rankings, although NCSES's own tables of leading institutions use the same R&D totals.
+
+## Other sources (not HERD)
+
+None of these changes a HERD value. They are not checked against NCSES.
+
+- **COGR federal research requirements**: the Trends page's workload chart uses COGR's "Changes in Federal Research Requirements Since 1991" (Figure 1, updated {cogr_updated}), with data labels entered by hand (context_cogr_requirements).
+- **Carnegie Classification**: the 2021 basic classification gives the sector groups used across the site (context_carnegie_2021). The 2025 research activity designations (R1, R2, Research Colleges and Universities) and institutional classification sit alongside them (context_carnegie_2025). The 2025 designations use fixed thresholds (R1: $50 million in R&D and 70 research doctorates; R2: $5 million and 20), so they are not a continuation of the 2021 groups.
+- **State population**: the U.S. Census Bureau's annual resident population estimates (Vintage {population_vintage}), one value per state for July 1 of each year from 2020 to {population_vintage}, starting from the 2020 Census (context_state_population). It covers the 50 states, the District of Columbia and Puerto Rico; the Bureau does not publish annual estimates for American Samoa, Guam or the U.S. Virgin Islands.
+- **Inflation**: the GDP implicit price deflator by calendar year from the U.S. Bureau of Economic Analysis (NIPA Table 1.1.9), the index NCSES uses for HERD's constant-dollar figures (context_gdp_deflator). It measures prices across the whole economy, not research costs specifically.
+- **State GDP**: current-dollar GDP by state from BEA (context_state_gdp), for R&D relative to a state's economy. BEA does not include Puerto Rico.
+- **NSF EPSCoR eligibility**: the jurisdictions eligible for NSF EPSCoR research infrastructure awards in each NSF fiscal year, entered by hand from NSF's yearly eligibility tables (context_epscor_eligibility). Since the CHIPS and Science Act, the list has been held at the same 28 jurisdictions.
+- **IPEDS: faculty, enrollment, doctorates, spending and endowment**: matched to each HERD institution by IPEDS ID and lined up with the HERD fiscal year (context_ipeds). Full-time instructional staff are counted on November 1 before the fiscal year (there is no count for FY {first_year}, because the fall 2011 staff survey used a different layout). Enrollment is the 12-month unduplicated headcount and reported full-time equivalents. Research doctorates are research/scholarship doctorates awarded in the year, the count the Carnegie 2025 designations use. Total expenses, research expenses and endowment (value at the end of the fiscal year, including foundations) come from the IPEDS finance survey for public and private nonprofit institutions. IPEDS research expenses follow accounting categories, not the HERD definition of R&D, so they differ from HERD totals. The newest IPEDS year is provisional until NCES revises it.
+- **Graduate students and postdocs**: NCSES's Survey of Graduate Students and Postdoctorates in Science and Engineering (GSS), summed to each HERD institution by IPEDS ID (context_graduate_students). The GSS year is a fall count: 2024 means fall 2024. The counts cover science, engineering and health fields only. The survey added about 150 institutions in 2014 and was redesigned in 2017, so counts on either side of those years are not strictly comparable.
+
+An institution has no IPEDS or GSS values when HERD Explorer cannot match it to an IPEDS ID, or when two HERD reporting units share one IPEDS ID (so nothing is counted twice).

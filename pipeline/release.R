@@ -12,6 +12,11 @@ read_release <- function(root = getwd()) {
   r$tables$zip <- sprintf("https://ncses.nsf.gov/pubs/%1$s/assets/data-tables/%1$s-data-tables-tables-excels.zip", pub)
   # nsf26304 -> NSF 26-304, the way NCSES cites it
   r$tables$label <- sprintf("NSF %s-%s", substr(pub, 4, 5), substr(pub, 6, 8))
+  v <- as.integer(r$population$vintage)
+  r$population$vintage <- v
+  # The file sits under the decade's folder, 2020-<vintage>; the 2030s will need a new decade folder
+  r$population$csv <- sprintf("https://www2.census.gov/programs-surveys/popest/datasets/2020-%1$d/state/totals/NST-EST%1$d-ALLDATA.csv", v)
+  r$population$page <- "https://www.census.gov/programs-surveys/popest/data/tables.html"
   h <- as.integer(r$projection$horizon)
   n <- as.integer(r$projection$backtest_cutoffs)
   r$projection$horizon <- h
@@ -34,5 +39,6 @@ site_meta <- function(r) list(
   backtest_last_cutoff = max(r$projection$cutoffs),
   tables_publication = r$tables$label,
   tables_page = r$tables$page,
-  cogr_updated = r$cogr$updated
+  cogr_updated = r$cogr$updated,
+  population_vintage = r$population$vintage
 )

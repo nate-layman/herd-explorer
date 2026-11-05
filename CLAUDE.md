@@ -31,6 +31,7 @@ The build fails if any national rollup differs from the totals NCSES publishes. 
 ## Rules
 
 - Never change a reported HERD value. Reshaping only, plus one unit conversion: NCSES reports dollars in thousands, and `pipeline/build.R` multiplies them by 1,000 as it reads them, so everything downstream is whole dollars.
+- Keep HERD and non-HERD data apart. Tables from other publishers are named `context_*` and listed with their origin in `table_catalog` (built in `pipeline/build.R`); a chart or answer that uses them says so in its source line.
 - Every chart carries a source line. Every projection carries the projection disclaimer (see README.md).
 - Keys for the Ask page live in sessionStorage only; a `?key=` parameter is read once and stripped.
 - Never use em dashes in site text.

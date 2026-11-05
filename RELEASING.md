@@ -10,6 +10,9 @@ A monthly GitHub Action (`check-release.yml`) checks whether the next year's mic
 - `tables.publication`: the NCSES publication with that year's data tables, from its address `https://ncses.nsf.gov/pubs/<publication>` (for FY 2024 this was `nsf26304`). Find it from the [HERD survey page](https://ncses.nsf.gov/surveys/higher-education-research-development). The build checks every national total against Tables 2 and 12 of that publication.
 - Optional: if COGR has updated its [Figure 1](https://www.cogr.edu/changes-federal-research-requirements-1991), type the new data labels into `pipeline/cogr_requirements.csv` and set `cogr.updated`. If you skip this, the build warns and the workload chart on Trends ends a year early.
 
+- Optional: if the Census Bureau has released a newer vintage of its [state population estimates](https://www.census.gov/programs-surveys/popest/data/tables.html) (each December), set `population.vintage`. The build stops if that vintage's file is not posted.
+- If NSF has posted a newer EPSCoR eligibility list, add its rows to `pipeline/epscor_eligibility.csv`. If the file ends before `last_year`, the build warns.
+
 Commit the change to `main`.
 
 ## 2. Run the Refresh data workflow

@@ -32,4 +32,4 @@ next:
 
 # R_REPOS pins a package snapshot on CI; locally it defaults to CRAN
 packages:
-	Rscript -e 'install.packages(c("DBI", "duckdb", "readxl", "writexl", "mgcv", "scoringRules", "yaml", "jsonlite"), repos = Sys.getenv("R_REPOS", "https://cloud.r-project.org"))'
+	Rscript -e 'install.packages(c("DBI", "duckdb", "readxl", "writexl", "mgcv", "scoringRules", "yaml", "jsonlite", "haven", "tidyselect"), repos = Sys.getenv("R_REPOS", "https://cloud.r-project.org"))'

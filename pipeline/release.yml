@@ -20,6 +20,12 @@ tables:
 cogr:
   updated: January 2025
 
+# Census Bureau state population estimates (July 1 of each year since the 2020 Census).
+# vintage is the latest estimates release, out each December; bump it when the next one appears at
+# https://www.census.gov/programs-surveys/popest/data/tables.html (state totals, NST-EST<vintage>).
+population:
+  vintage: 2025
+
 # Projections
 projection:
   horizon: 5             # years projected past last_year

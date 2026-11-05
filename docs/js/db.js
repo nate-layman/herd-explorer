@@ -4,8 +4,13 @@
 import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
 
 const TABLES = [
-  'metrics', 'measure_catalog', 'institutions', 'institution_groups', 'institution_locations',
-  'national_published', 'cogr_requirements', 'sources',
+  // HERD Survey data, and figures computed from it
+  'metrics', 'measure_catalog', 'herd_ranks', 'institutions', 'national_published',
+  // Groupings, locations and links from other publishers, and the catalog of what is and is not HERD
+  'institution_groups', 'institution_locations', 'institution_unitids', 'table_catalog', 'sources',
+  // Not HERD: data from other publishers, always named context_*
+  'context_carnegie_2021', 'context_carnegie_2025', 'context_cogr_requirements', 'context_state_population',
+  'context_gdp_deflator', 'context_state_gdp', 'context_epscor_eligibility', 'context_ipeds', 'context_graduate_students',
 ];
 
 let ready = null;
@@ -31,6 +36,7 @@ async function init() {
   await conn.query(`
     CREATE VIEW institution_latest AS
     SELECT i.* EXCLUDE (year), i.year AS latest_year, g.sector, g.sector_source, g.msi, g.hsi, g.tribal, g.land_grant,
+           g.research_2025, g.institutional_2025,
            l.latitude, l.longitude
     FROM (SELECT * FROM institutions QUALIFY row_number() OVER (PARTITION BY inst_id ORDER BY year DESC) = 1) i
     JOIN institution_groups g USING (inst_id)

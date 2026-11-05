@@ -69,7 +69,7 @@
       <a href="data/downloads/herd_explorer_wide.xlsx">Excel (XLSX), one row per institution and year</a>
       <a href="data/downloads/herd_explorer_wide.csv">CSV, one row per institution and year</a>
       <a href="data/downloads/herd_explorer_survey_values.csv.zip">Every survey value, long format (CSV, zipped, 25 MB)</a>
-      <a href="data/herd.duckdb">Full database (DuckDB, 42 MB)</a>
+      <a href="data/herd.duckdb">Full database (DuckDB, 45 MB)</a>
       <a href="data/metrics.parquet">Measures (Parquet)</a>
       <a href="data/facts.parquet">Survey values (Parquet)</a>
     </div>
@@ -78,7 +78,15 @@
       definitions and the source list. On the Explore page you can also export any table view you build.</p>
 
     <h2>Sources</h2>
-    <table class="data" id="sources"><tr><td class="status">Loading&hellip;</td></tr></table>
+    <h3>HERD Survey</h3>
+    <table class="data" id="sources-herd"><tr><td class="status">Loading&hellip;</td></tr></table>
+    <h3>Not HERD: other publishers</h3>
+    <p class="chart-note">These sources add context: groups, locations, population, prices, faculty, students and more.
+      They sit in their own tables (named <code>context_</code> in the database) and never change a HERD value. Any chart or
+      answer that uses them names them as a source.</p>
+    <table class="data" id="sources-other"><tr><td class="status">Loading&hellip;</td></tr></table>
+    <h3>What each table in the database holds</h3>
+    <table class="data" id="table-catalog"><tr><td class="status">Loading&hellip;</td></tr></table>
 
     <h2>How the data were put together</h2>
     <ul>
@@ -143,9 +151,14 @@
       `In FY ${size.year}, ${Number(size.n).toLocaleString()} institutions reported ${fmt(size.total, 'dollars')} in R&D.`;
 
     const sources = await query('SELECT * FROM sources');
-    $('sources').innerHTML = '<tr><th>Used for</th><th>Publisher</th><th>Title</th><th>Downloaded</th></tr>' +
-      sources.map(s => `<tr><td>${esc(s.table_name)}</td><td>${esc(s.publisher)}</td>
+    const sourceRows = list => '<tr><th>Tables</th><th>Publisher</th><th>Title</th><th>Downloaded</th></tr>' +
+      list.map(s => `<tr><td>${esc(s.table_name)}</td><td>${esc(s.publisher)}</td>
         <td><a href="${esc(s.url)}">${esc(s.title)}</a></td><td>${esc(s.built_on)}</td></tr>`).join('');
+    $('sources-herd').innerHTML = sourceRows(sources.filter(s => s.origin.startsWith('HERD')));
+    $('sources-other').innerHTML = sourceRows(sources.filter(s => !s.origin.startsWith('HERD')));
+    const tables = await query('SELECT * FROM table_catalog');
+    $('table-catalog').innerHTML = '<tr><th>Table</th><th>Origin</th><th>Holds</th></tr>' +
+      tables.map(t => `<tr><td>${esc(t.table_name)}</td><td>${esc(t.origin)}</td><td>${esc(t.description)}</td></tr>`).join('');
 
     const catalog = await query('SELECT * FROM measure_catalog ORDER BY category, label');
     function drawCatalog() {

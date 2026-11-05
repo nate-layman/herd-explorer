@@ -47,7 +47,8 @@
     <p class="lede">Federal research requirements keep accumulating, while the share of indirect costs universities
       recover for each dollar of direct research has fallen.</p>
     <div id="workload" class="chart"></div>
-    <p class="chart-note">Sources: COGR, <a href="https://www.cogr.edu/changes-federal-research-requirements-1991">Changes in Federal
+    <p class="chart-note"><strong>Includes data from outside HERD:</strong> the requirements count is COGR's, not NCSES's.
+      Sources: COGR, <a href="https://www.cogr.edu/changes-federal-research-requirements-1991">Changes in Federal
       Research Requirements Since 1991</a>, Figure 1 (updated <span data-meta="cogr_updated">January 2025</span>), data labels entered by hand. NCSES, HERD Survey FY <span data-meta="last_year">2024</span>
       data tables (<a href="https://ncses.nsf.gov/pubs/nsf26304" data-meta-href="tables_page"><span data-meta="tables_publication">NSF 26-304</span></a>), Table 12, standard-form institutions.
       Recovery figures are national only; NCSES does not release them by institution.</p>
@@ -158,7 +159,7 @@
                  max(value) FILTER (WHERE measure = 'Direct costs') AS rate
           FROM national_published WHERE dimension = 'Type of cost' GROUP BY year)
         SELECT c.year, c.cumulative_requirements AS reqs, rec.rate
-        FROM cogr_requirements c LEFT JOIN rec USING (year)
+        FROM context_cogr_requirements c LEFT JOIN rec USING (year)
         WHERE c.year >= 2010 ORDER BY c.year`);
       const Plotly = await plotly();
       Plotly.newPlot('workload', [

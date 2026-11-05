@@ -22,7 +22,7 @@ env:
 jobs:
   refresh:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 240  # the NCSES graduate survey files download slowly
     steps:
       - uses: actions/checkout@v5
 
