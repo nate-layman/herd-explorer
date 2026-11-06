@@ -14,7 +14,7 @@ export const MINDROUTER_MODEL = 'qwen/qwen3.8-27b';
 export const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 export const OPENAI_MODEL = 'gpt-6-astra';
 export const ANTHROPIC_MODEL = 'claude-opus-5-5';
-export const GEMINI_MODEL = 'gemini-3.8-flash';
+export const GEMINI_MODEL = 'gemini-3.5-flash-lite'; // best model on Google's free tier
 
 const STORAGE_KEY = 'herd_explorer_llm_key';
 
@@ -51,6 +51,13 @@ export function backendName(key) {
   if (isAnthropicKey(key)) return 'Anthropic Claude';
   if (isOpenAIKey(key)) return 'OpenAI';
   return 'Google Gemini';
+}
+
+export function modelName(key) {
+  if (isMindRouterKey(key)) return MINDROUTER_MODEL;
+  if (isAnthropicKey(key)) return ANTHROPIC_MODEL;
+  if (isOpenAIKey(key)) return OPENAI_MODEL;
+  return GEMINI_MODEL;
 }
 
 /**

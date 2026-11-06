@@ -30,6 +30,10 @@ The data, charts and projections are provided "as is," without warranty of any k
 
 [Open an issue](https://github.com/nate-layman/herd-explorer/issues/new/choose). Include the page, the institution or slice, the year, and what you expected to see.
 
+## Want other data or a new feature?
+
+Post it on the [AI4RA Groups.io listserv](https://groups.ai4ra.uidaho.edu/g/main) with [#DataScience](https://groups.ai4ra.uidaho.edu/g/main/search?q=%23DataScience&ct=1) in the subject line.
+
 ## Local preview
 
 ```bash

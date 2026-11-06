@@ -13,6 +13,12 @@
     .key-row input { font: inherit; padding: 0.35rem 0.5rem; min-width: 18rem; flex: 1; }
     .key-status { color: var(--muted); }
     .key-status.ok { color: #1b7f4f; font-weight: 600; }
+    .key-help { margin: -0.4rem 0 1rem; font-size: 0.85rem; }
+    .key-help details { margin: 0.35rem 0; }
+    .key-help summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+    .key-help details > * { margin: 0.5rem 0; }
+    .key-help ol, .key-help ul { padding-left: 1.3rem; }
+    .key-help li { margin-bottom: 0.25rem; }
     .btn { font: inherit; font-size: 0.85rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
     .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     .btn:disabled { opacity: 0.5; cursor: default; }
@@ -68,6 +74,37 @@
       <button id="clear-key" class="btn" type="button">Forget</button>
       <span id="key-status" class="key-status">No key yet. Your key stays in this browser tab and goes only to the provider it belongs to.</span>
     </form>
+    <div class="key-help">
+      <details>
+        <summary>Don't have one? Get a free Gemini key</summary>
+        <ol>
+          <li>Go to <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> and sign in with a Google account.</li>
+          <li>On a first visit, a key is created for you. Otherwise, click <strong>Create API Key</strong> and choose a project with no billing account. A project linked to billing is charged at paid rates.</li>
+          <li>Copy the key, paste it in the box above, and click <strong>Use key</strong>.</li>
+        </ol>
+        <p>Free keys need no credit card, but they have <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener">limits per minute and per day</a>, and one question can use several requests. Google may also use what you send to improve its products, and its reviewers may read it, so don't enter anything sensitive.</p>
+      </details>
+      <details>
+        <summary>Which AI model answers</summary>
+        <p>Your key decides the model:</p>
+        <ul>
+          <li><strong>Google Gemini key:</strong> <code data-model="gemini"></code>, the best model on Google's free tier.</li>
+          <li><strong>Anthropic key:</strong> <code data-model="anthropic"></code>. Billed per question.</li>
+          <li><strong>OpenAI key:</strong> <code data-model="openai"></code>. Billed per question.</li>
+          <li><strong>University of Idaho MindRouter key:</strong> <code data-model="mindrouter"></code>.</li>
+        </ul>
+        <p>Anthropic and OpenAI questions are billed to the account that owns the key, and a chat subscription doesn't include an API key.</p>
+      </details>
+      <details>
+        <summary>How the key is handled</summary>
+        <ul>
+          <li><strong>Kept in this tab.</strong> The key is held in session storage and clears when the tab closes.</li>
+          <li><strong>No server of ours.</strong> This site is static files on GitHub Pages, so nothing here stores or sees your key.</li>
+          <li><strong>Sent only to its provider, chosen by prefix.</strong> <code>sk-ant-</code> goes to Anthropic and other <code>sk-</code> keys go to OpenAI. <code>mr2_</code> goes to University of Idaho MindRouter through the AI4RA lakehouse proxy. Anything else is treated as a Google Gemini key.</li>
+          <li><strong>Removed from links.</strong> A key passed as <code>?key=</code> is read once and removed from the address bar.</li>
+        </ul>
+      </details>
+    </div>
 
     <div class="presets" id="presets"></div>
     <div id="messages"></div>
@@ -145,11 +182,16 @@ ORDER BY m.year</pre></li>
     import { meta, fillTemplate } from './js/meta.js';
     import { query } from './js/db.js';
     import { plotly, PALETTE, BASE_LAYOUT, CONFIG } from './js/charts.js';
-    import { readKeyFromURL, getKey, setKey, backendName, callModel } from './js/llm.js';
+    import { readKeyFromURL, getKey, setKey, backendName, modelName, callModel, GEMINI_MODEL, ANTHROPIC_MODEL, OPENAI_MODEL, MINDROUTER_MODEL } from './js/llm.js';
 
     renderLayout('ask.html');
     const M = await meta;
     const $ = id => document.getElementById(id);
+
+    // Model names come from llm.js, so the page and help text always match what is called
+    const MODELS = { gemini: GEMINI_MODEL, anthropic: ANTHROPIC_MODEL, openai: OPENAI_MODEL, mindrouter: MINDROUTER_MODEL };
+    document.querySelectorAll('[data-model]').forEach(el => { el.textContent = MODELS[el.dataset.model]; });
+    const HELP_VALUES = { ...M, gemini_model: GEMINI_MODEL, anthropic_model: ANTHROPIC_MODEL, openai_model: OPENAI_MODEL, mindrouter_model: MINDROUTER_MODEL };
 
     function openTab(name) {
       for (const n of ['ask', 'how']) {
@@ -167,7 +209,7 @@ ORDER BY m.year</pre></li>
     function showKey() {
       const k = getKey();
       $('key-status').className = 'key-status' + (k ? ' ok' : '');
-      $('key-status').textContent = k ? `${backendName(k)} key in use for this tab.`
+      $('key-status').textContent = k ? `${backendName(k)} key in use for this tab. Model: ${modelName(k)}.`
         : 'No key yet. Your key stays in this browser tab and goes only to the provider it belongs to.';
       $('key').value = '';
       $('key').placeholder = k ? 'Key set. Paste a different key to switch.' : 'MindRouter (mr2_...), Anthropic, OpenAI or Google Gemini key';
@@ -210,7 +252,7 @@ ORDER BY m.year</pre></li>
     const helpCache = new Map();
     async function readHelp(name) {
       if (!helpCache.has(name)) helpCache.set(name, fetch(`help/${name}`)
-        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }).then(t => fillTemplate(t, M))
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }).then(t => fillTemplate(t, HELP_VALUES))
         .catch(e => { helpCache.delete(name); throw e; }));
       return helpCache.get(name);
     }

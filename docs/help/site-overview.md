@@ -19,6 +19,10 @@ The old Pivot page (pivot.html) now redirects to Explore's Table tab.
 
 Use "Report a data error" in any page footer, which opens a GitHub issue form at github.com/nate-layman/herd-explorer/issues. Include the page, the institution or slice, the year, and what you expected to see.
 
+## Requesting data or features
+
+To ask for other data to be added or for a new feature, post it on the AI4RA Groups.io listserv with #DataScience in the subject line: https://groups.ai4ra.uidaho.edu/g/main. New members apply through that page, and a person approves each application. The link is on the Trends page and in every page footer.
+
 ## Disclaimer
 
 HERD Explorer is an independent project. It is not an official product of NCSES or the U.S. National Science Foundation, and neither NCSES, NSF nor the University of Idaho endorses it. The data, charts and projections are provided as is, without warranty. They are not financial, budget, legal or investment advice. Check figures against the official NCSES tables before relying on them.
