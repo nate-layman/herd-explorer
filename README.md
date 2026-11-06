@@ -26,13 +26,9 @@ HERD Explorer is an independent project. It is not an official product of NCSES 
 
 The data, charts and projections are provided "as is," without warranty of any kind, as described in the [LICENSE](LICENSE). They may contain errors introduced by the reshaping. They are not financial, budget, legal or investment advice. Before relying on a figure for a decision, check it against the official NCSES tables. Projections show where past trends lead if they continue and may not reflect what actually happens.
 
-## Found an error?
+## Found an error, or want other data or a new feature?
 
-[Open an issue](https://github.com/nate-layman/herd-explorer/issues/new/choose). Include the page, the institution or slice, the year, and what you expected to see.
-
-## Want other data or a new feature?
-
-Post it on the [AI4RA Groups.io listserv](https://groups.ai4ra.uidaho.edu/g/main) with [#DataScience](https://groups.ai4ra.uidaho.edu/g/main/search?q=%23DataScience&ct=1) in the subject line.
+For a data error, include the page, the institution or slice, the year, and what you expected to see. Post it on the [AI4RA Groups.io listserv](https://groups.ai4ra.uidaho.edu/g/main) with [#DataScience](https://groups.ai4ra.uidaho.edu/g/main/search?q=%23DataScience&ct=1) in the subject line.
 
 ## Local preview
 

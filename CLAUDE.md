@@ -6,7 +6,7 @@ Browser-based explorer for the NCSES HERD Survey, FY 2012 to FY 2024. Static sit
 
 ## Before you start
 
-1. `git pull`, then `gh issue list --state open`. Data-error reports arrive as issues.
+1. `git pull`, then `gh issue list --state open` (automated release checks). Data-error reports and requests arrive on the AI4RA Groups.io listserv under #DataScience, not as issues.
 
 ## Layout
 

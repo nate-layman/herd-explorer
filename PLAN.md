@@ -35,7 +35,7 @@ An interactive site for exploring the NCSES Higher Education Research and Develo
 | Ask | Questions about the data in plain language; the model writes SQL that runs locally in DuckDB-WASM | Key passthrough copied from Promptulus |
 | About HERD | The survey itself, provenance, survey notes, downloads, methods and backtest results | |
 
-Every page has a footer linking the GitHub repo and a "Report a data error" issue template. Every chart carries a source line.
+Every page has a footer linking the GitHub repo and the AI4RA Groups.io listserv (#DataScience), where data errors and requests are reported. Every chart carries a source line.
 
 **Disclaimer, site-wide.** Every page footer and the About HERD page carry the disclaimer from README.md: independent project, not an official NCSES or NSF product, not endorsed by NCSES, NSF or the University of Idaho; data, charts and projections provided as is without warranty; not financial, budget, legal or investment advice; check figures against official NCSES tables before relying on them. Downloads include the same text in a README inside the zip and on a sheet in the XLSX. Have University of Idaho General Counsel review the wording before public launch.
 

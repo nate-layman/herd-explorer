@@ -31,8 +31,9 @@ https://ncses.nsf.gov/explore-data/microdata/higher-education-research-developme
 
 HERD Explorer reshapes and combines those files but does not change the
 reported values. NCSES is not responsible for this project, and errors in
-the reshaping are this project's own. Report them at
-https://github.com/nate-layman/herd-explorer/issues
+the reshaping are this project's own. Report them on the AI4RA Groups.io
+listserv with #DataScience in the subject line:
+https://groups.ai4ra.uidaho.edu/g/main
 
 ------------------------------------------------------------------------
 Third-party software

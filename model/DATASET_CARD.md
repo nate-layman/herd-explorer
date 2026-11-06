@@ -36,7 +36,7 @@ NCSES [Higher Education Research and Development Survey](https://ncses.nsf.gov/e
 
 ## Disclaimer
 
-HERD Explorer is an independent project. It is not an official product of NCSES or the U.S. National Science Foundation, and neither NCSES, NSF nor the University of Idaho endorses it. These projections are provided as is, without warranty of any kind, and are not financial, budget, legal or investment advice. Report problems at https://github.com/nate-layman/herd-explorer/issues
+HERD Explorer is an independent project. It is not an official product of NCSES or the U.S. National Science Foundation, and neither NCSES, NSF nor the University of Idaho endorses it. These projections are provided as is, without warranty of any kind, and are not financial, budget, legal or investment advice. Report problems on the AI4RA Groups.io listserv, with #DataScience in the subject line: https://groups.ai4ra.uidaho.edu/g/main
 
 ## Citation
 

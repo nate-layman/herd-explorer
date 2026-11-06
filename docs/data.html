@@ -62,7 +62,7 @@
     <h2 class="part" id="data">Data &amp; sources</h2>
     <p class="lede">Every number on this site comes from public sources listed below. HERD Explorer reshapes and combines
       them but never changes a reported value. If something looks wrong, please
-      <a id="report" href="#">report a data error</a>.</p>
+      <a id="report" href="#">post it on the AI4RA Groups.io listserv</a> with #DataScience in the subject line.</p>
 
     <h2>Download the data</h2>
     <div class="downloads">
@@ -132,13 +132,13 @@
   </main>
 
   <script type="module">
-    import { renderLayout, REPO, REPORT_ERROR, DISCLAIMER } from './js/layout.js';
+    import { renderLayout, REPO, FORUM, DISCLAIMER } from './js/layout.js';
     import { query } from './js/db.js';
     import { fmt } from './js/charts.js';
 
     renderLayout('data.html');
     const $ = id => document.getElementById(id);
-    $('report').href = REPORT_ERROR;
+    $('report').href = FORUM;
     $('crosswalk').href = `${REPO}/blob/main/pipeline/carnegie_overrides.csv`;
     $('locations').href = `${REPO}/blob/main/pipeline/location_overrides.csv`;
     $('disclaimer').textContent = DISCLAIMER;

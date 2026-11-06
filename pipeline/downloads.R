@@ -20,7 +20,8 @@ download_readme <- function(built_on, first_year, last_year) paste(
   "Disclaimer: HERD Explorer is an independent project. It is not an official product of NCSES or the U.S. National",
   "Science Foundation, and neither NCSES, NSF nor the University of Idaho endorses it. The data are provided as is,",
   "without warranty of any kind, and are not financial, budget, legal or investment advice. Check figures against the",
-  "official NCSES tables before relying on them. Report errors at https://github.com/nate-layman/herd-explorer/issues",
+  "official NCSES tables before relying on them. Report errors on the AI4RA Groups.io listserv, with #DataScience in",
+  "the subject line: https://groups.ai4ra.uidaho.edu/g/main",
   sep = "\n")
 
 build_downloads <- function(con, out_dir, first_year, last_year) {
