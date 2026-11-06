@@ -15,9 +15,9 @@ HERD Explorer is a browser-based explorer for the NCSES Higher Education Researc
 
 The old Pivot page (pivot.html) now redirects to Explore's Table tab.
 
-## Reporting a data error or requesting data or features
+## Feedback: data errors, requests and suggestions
 
-Post it on the AI4RA Groups.io listserv with #DataScience in the subject line: https://groups.ai4ra.uidaho.edu/g/main. For a data error, include the page, the institution or slice, the year, and what you expected to see. New members apply through that page, and a person approves each application. The link is on the Trends page and in every page footer.
+To share what you think, report a data error, or suggest other data or a new feature, join the AI4RA Groups.io listserv (https://groups.ai4ra.uidaho.edu/g/main) and reply to the #DataScience thread, or start a new topic with #DataScience in the subject line. For a data error, include the page, the institution or slice, the year, and what you expected to see. New members apply through that page, and a person approves each application. The link is on the Trends page and in every page footer.
 
 ## Disclaimer
 

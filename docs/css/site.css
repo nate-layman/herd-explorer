@@ -38,7 +38,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
 h1 { font-size: 1.6rem; margin: 0 0 0.3rem; }
 h2 { font-size: 1.2rem; margin: 2rem 0 0.5rem; }
 .lede { color: var(--muted); margin: 0 0 1.2rem; max-width: 60rem; }
-.callout { background: var(--panel); border-left: 3px solid var(--accent); border-radius: 0.3rem; padding: 0.6rem 0.9rem; margin: 0 0 1.2rem; font-size: 0.9rem; max-width: 60rem; }
+.callout { display: flex; align-items: center; gap: 0.8rem; background: var(--panel); border-left: 3px solid var(--accent); border-radius: 0.3rem; padding: 0.6rem 0.9rem; margin: 0 0 1.2rem; font-size: 0.9rem; max-width: 60rem; }
+.callout svg { flex: none; color: var(--accent); }
+.callout p { margin: 0; }
 
 .controls {
   display: flex;
@@ -77,8 +79,9 @@ table.data th { color: var(--muted); }
   border-top: 1px solid var(--line);
   font-size: 0.8rem;
   color: var(--muted);
+  text-align: center;
 }
-.site-footer p { margin: 0.3rem 0; max-width: 70rem; }
+.site-footer p { margin: 0.3rem auto; max-width: 70rem; }
 .site-footer .disclaimer { font-size: 0.75rem; }
 
 @media (max-width: 640px) {

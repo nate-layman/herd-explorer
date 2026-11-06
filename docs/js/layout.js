@@ -35,7 +35,7 @@ export function renderLayout(active) {
         &middot; <a href="${REPO}/blob/main/LICENSE">Apache License 2.0</a>
         &middot; Copyright 2026 Nathan Layman, University of Idaho
         &middot; <a href="${REPO}/blob/main/NOTICE">NOTICE</a></p>
-      <p>Found a data error, or want other data or a new feature? Post it on the <a href="${FORUM}">AI4RA Groups.io listserv</a> with <a href="${FORUM}/search?q=%23DataScience&amp;ct=1">#DataScience</a> in the subject line.</p>
+      <p>Tell us what you think, report a data error, or suggest other data or a new feature: join the <a href="${FORUM}">AI4RA Groups.io listserv</a> and reply to the <a href="${FORUM}/search?q=%23DataScience&amp;ct=1">#DataScience</a> thread, or start a new topic with #DataScience in the subject line.</p>
       <p>A project of <a href="https://ai4ra.uidaho.edu">AI4RA</a> at the University of Idaho, funded by the U.S. National Science Foundation
         GRANTED program, award <a href="https://www.nsf.gov/awardsearch/show-award?AWD_ID=2427549">#2427549</a>.</p>
       <p class="disclaimer">${DISCLAIMER}</p>
