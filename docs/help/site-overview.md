@@ -29,4 +29,4 @@ HERD Explorer is an independent project. It is not an official product of NCSES 
 
 ## Who made it
 
-A project of AI4RA (ai4ra.uidaho.edu) at the University of Idaho, funded by the U.S. National Science Foundation GRANTED program, award 2427549. Source code is on GitHub (nate-layman/herd-explorer) under the Apache 2.0 license; cite it with the repository's CITATION.cff.
+Written by Nathan Layman, University of Idaho. A project of AI4RA (ai4ra.uidaho.edu) at the University of Idaho, funded by the U.S. National Science Foundation GRANTED program, award 2427549. Source code is on GitHub (nate-layman/herd-explorer) under the Apache 2.0 license; cite it with the repository's CITATION.cff.
