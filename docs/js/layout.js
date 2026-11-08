@@ -1,5 +1,6 @@
 // Shared header and footer. Every page calls renderLayout(activePage).
 import { fillMeta } from './meta.js';
+import { readKeyFromURL } from './llm.js';
 
 export const REPO = 'https://github.com/nate-layman/herd-explorer';
 export const FORUM = 'https://groups.ai4ra.uidaho.edu/g/main';
@@ -20,6 +21,8 @@ export const DISCLAIMER =
   'Check figures against the official NCSES tables before relying on them.';
 
 export function renderLayout(active) {
+  // A ?key= link works on any page: the key is kept for this tab and stripped from the address bar
+  readKeyFromURL();
   const nav = PAGES.map(([href, label]) =>
     `<a href="${href}"${href === active ? ' aria-current="page"' : ''}>${label}</a>`).join('');
   document.body.insertAdjacentHTML('afterbegin', `

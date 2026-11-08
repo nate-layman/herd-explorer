@@ -4,7 +4,7 @@ Ask questions about the HERD data in plain language. The AI model never sees the
 
 ## Keys
 
-Bring your own key; paste it in the API key box and click Use key, or open the page from a link like ask.html?key=... (read once and removed from the address bar). The key stays in that browser tab (session storage) and goes only to its own provider, chosen by prefix:
+Bring your own key; paste it in the API key box and click Use key, or open any page of the site from a link ending in ?key=..., such as index.html?key=... or ask.html?key=... (read once, removed from the address bar, and kept for the Ask page as you move around the site in that tab). The key stays in that browser tab (session storage) and goes only to its own provider, chosen by prefix:
 
 - mr2_ : University of Idaho MindRouter, model {mindrouter_model}
 - sk-ant- : Anthropic Claude, model {anthropic_model}

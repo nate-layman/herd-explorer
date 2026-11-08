@@ -101,7 +101,7 @@
           <li><strong>Kept in this tab.</strong> The key is held in session storage and clears when the tab closes.</li>
           <li><strong>No server of ours.</strong> This site is static files on GitHub Pages, so nothing here stores or sees your key.</li>
           <li><strong>Sent only to its provider, chosen by prefix.</strong> <code>sk-ant-</code> goes to Anthropic and other <code>sk-</code> keys go to OpenAI. <code>mr2_</code> goes to University of Idaho MindRouter through the AI4RA lakehouse proxy. Anything else is treated as a Google Gemini key.</li>
-          <li><strong>Removed from links.</strong> A key passed as <code>?key=</code> is read once and removed from the address bar.</li>
+          <li><strong>Removed from links.</strong> A key passed as <code>?key=</code> on any page is read once and removed from the address bar.</li>
         </ul>
       </details>
     </div>
@@ -157,7 +157,7 @@ ORDER BY m.year</pre></li>
         <li>Your questions, the description of the data from step 1, the query results, and any help documents the
           model asks for in step 2 go to the AI provider your key belongs to. The HERD data themselves stay in your browser.</li>
         <li>Your key stays in this browser tab (session storage) and is sent only to its own provider. A key passed in a link
-          (<code>ask.html?key=...</code>) is read once and removed from the address bar. The key box and its routing by key
+          (<code>?key=...</code> on any page of the site, such as <code>index.html?key=...</code>) is read once and removed from the address bar. The key box and its routing by key
           prefix come from <a href="https://github.com/AI4RA/promptulus">Promptulus</a>: <code>mr2_</code> keys go to University
           of Idaho MindRouter, <code>sk-ant-</code> to Anthropic, other <code>sk-</code> keys to OpenAI, anything else to
           Google Gemini.</li>
