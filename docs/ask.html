@@ -39,6 +39,7 @@
     details.sql pre { background: var(--panel); padding: 0.5rem 0.7rem; border-radius: 0.4rem; overflow-x: auto; white-space: pre-wrap; }
     .sql-error { color: #8a1f1f; font-size: 0.8rem; }
     .ask-chart { width: 100%; min-height: 380px; }
+    .ask-chart.ask-anim { height: 600px; }
     /* Buttons keep their own height and sit on the textarea's center line */
     .input-row { display: flex; gap: 0.5rem; align-items: center; }
     .input-row .btn { white-space: nowrap; padding: 0.45rem 1.1rem; }
@@ -146,8 +147,9 @@ ORDER BY m.year</pre></li>
           question. If it is still querying after three, it must answer using only numbers the queries returned, or say
           plainly that it could not get the answer; it never estimates or fills in missing numbers.</li>
         <li><strong>Charts are data, not code.</strong> When a chart helps, the model describes it (chart type, a query, which
-          columns go on each axis). The page checks that description, runs the query, and draws the chart itself. Nothing the
-          model writes is run as code.</li>
+          columns go on each axis). The page checks that description, runs the query, and draws the chart itself. Ask for an
+          animation and the model picks from the Animate tab's fixed menu (bar race, line race, moving scatter or map, with its
+          short list of measures and counts); the page refuses anything off the menu. Nothing the model writes is run as code.</li>
         <li><strong>You can see the work.</strong> Every answer has a <em>Show the SQL</em> panel with the exact query and its
           results, so you can check what was counted.</li>
       </ol>
@@ -182,6 +184,7 @@ ORDER BY m.year</pre></li>
     import { meta, fillTemplate } from './js/meta.js';
     import { query } from './js/db.js';
     import { plotly, PALETTE, BASE_LAYOUT, CONFIG } from './js/charts.js';
+    import { drawAnimation, MEASURE_IDS as ANIMATE_MEASURES } from './js/animate.js';
     import { readKeyFromURL, getKey, setKey, backendName, modelName, callModel, GEMINI_MODEL, ANTHROPIC_MODEL, OPENAI_MODEL, MINDROUTER_MODEL } from './js/llm.js';
 
     renderLayout('ask.html');
@@ -373,6 +376,7 @@ RULES
 - Adapt the EXAMPLE QUERIES below; they show the usual ways to compare years, groups and institutions.
 - After you see query results, answer in plain language in a few sentences. Report dollar amounts as whole dollars with commas ($1,234,567,000), not rounded to millions or billions. If someone compares with NCSES tables, explain that NCSES publishes thousands of dollars and this site multiplies by 1,000. Say which years and which measure you used. Never invent numbers that were not in the results; if the data cannot answer the question, say so.
 - If a chart would help, put each chart in its own fenced block marked chart, containing valid JSON: {"type": "line"|"bar"|"scatter", "sql": "<a SELECT>", "x": "<column>", "y": "<column, or a list of columns for one line each>", "series": "<optional column whose values split the data into lines or bars>", "title": "<short title>", "y_label": "<axis label>"}. Use either a list of y columns or series, not both. Keep to 8 lines or fewer. Chart dollars in whole dollars.
+- When someone asks for an animation, or for change over the years that a race or moving chart shows well, describe an animation in a fenced block marked chart. It has no sql; the page builds it from a fixed menu: {"type": "animate", "animation": "bar"|"line"|"scatter"|"map", "show": "institutions"|"states"|"sectors"|"agencies"|"fields"|"sources", "measure": "<measure_id>", "x": "<measure_id>", "y": "<measure_id>", "n": <number>, "sector": "<optional sector value>", "state": "<optional two-letter state>"}. bar is a bar race of the largest groups each year (n 10, 15 or 20); line is a line race of the n largest in FY ${M.last_year} (n 5 or 8); both use show and, unless show is agencies, fields or sources (which split total R&D into parts), measure. scatter moves one bubble per institution with x and y measures, sized by All R&D (n 50, 100 or 200 institutions, largest by All R&D). map puts institutions on a U.S. map sized by measure (n 100, 300, or 0 for every institution). sector and state filter the institutions. Measures must be one of: ${ANIMATE_MEASURES.join(', ')}. Animations need no query; say in a sentence what it shows, and that its note gives the source. For anything outside this menu, use an ordinary chart instead.
 - Write plainly. Do not use em dashes.
 - The data stop at FY ${M.last_year}. For questions about the future, say that the Trends and Compare pages show model projections with uncertainty ranges, and that a projection shows where past trends lead if they continue; it does not account for known upcoming changes such as federal budget or policy shifts.
 - Do not give financial, budget, legal or investment advice.
@@ -407,7 +411,7 @@ ${contents}`;
             else if (c === '}' && --depth === 0) break;
           }
           const candidate = text.slice(i, j + 1);
-          if (depth === 0 && /"type"/.test(candidate) && /"sql"/.test(candidate)) {
+          if (depth === 0 && /"type"/.test(candidate) && (/"sql"/.test(candidate) || /"animate"/.test(candidate))) {
             charts.push(candidate);
             i = j + 1;
             continue;
@@ -438,6 +442,18 @@ ${contents}`;
     async function renderChart(el, raw) {
       let spec;
       try { spec = JSON.parse(raw); } catch { el.innerHTML = '<p class="sql-error">The chart description was not valid.</p>'; return; }
+      // Animations come from the Animate tab's fixed menu; animate.js checks every field against it
+      if (spec.type === 'animate') {
+        el.classList.add('ask-anim');
+        let res;
+        try { res = await drawAnimation(el, spec, M); } catch (e) { res = { error: e.message }; }
+        if (res.error) { el.classList.remove('ask-anim'); el.style.minHeight = '0'; el.innerHTML = `<p class="sql-error">Animation: ${esc(res.error)}</p>`; return; }
+        const note = document.createElement('p');
+        note.className = 'chart-note';
+        note.innerHTML = `${esc(res.note)} <a href="${esc(res.link)}">Open in Animate</a> to change it.`;
+        el.after(note);
+        return;
+      }
       if (!['line', 'bar', 'scatter'].includes(spec.type) || typeof spec.sql !== 'string') { el.innerHTML = '<p class="sql-error">Unsupported chart.</p>'; return; }
       const res = await runSQL(spec.sql);
       if (res.error) { el.innerHTML = `<p class="sql-error">Chart query failed: ${esc(res.error)}</p>`; return; }

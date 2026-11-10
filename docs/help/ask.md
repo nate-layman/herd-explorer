@@ -23,8 +23,9 @@ Forget clears the key. New starts a new conversation. The conversation is kept w
 2. It writes a SQL query. Your browser allows only a single read-only SELECT (no file or web access, no writes, no extensions) and caps results at 1,000 rows.
 3. Up to 60 rows go back to the model, which explains them. If a query failed, it can write a corrected one, up to three rounds per question. If it is still querying after three, it must answer from what the queries returned, using only those numbers, or say plainly that it could not get the answer. It never estimates or fills in missing numbers. Such answers carry a note that all query attempts were used.
 4. Charts are descriptions (type, a query, which columns go where) that the page checks and draws itself; nothing the model writes runs as code.
-5. Every answer has Show the SQL panels with the exact queries and results.
-6. For help using the site or questions about methods, the model can read these help documents; the answer lists which ones it read.
+5. Ask for an animation ("show a bar race of the top 15 states in federal funding", "animate NIH funding on a map") and the model describes one from the Animate tab's fixed menu: bar race, line race, moving scatter or map, with the same measures, counts and filters as that tab (animate.md). The page checks every choice against the menu, refuses anything else, and draws it with Play, Pause and a year slider. Under each animation, **Open in Animate** opens the same settings on Explore's Animate tab, where you can change them.
+6. Every answer has Show the SQL panels with the exact queries and results.
+7. For help using the site or questions about methods, the model can read these help documents; the answer lists which ones it read.
 
 ## What leaves your browser
 
