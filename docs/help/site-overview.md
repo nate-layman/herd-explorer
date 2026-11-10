@@ -6,9 +6,10 @@ HERD Explorer is a browser-based explorer for the NCSES Higher Education Researc
 
 - **Trends** (index.html): national R&D over time, or split by a group such as institution type, state or public/private. Optional projection to FY {projection_last_year}.
 - **Compare** (compare.html): pick institutions and see their trends side by side, with the median of each one's institution type for context. Optional projections.
-- **Explore** (explore.html): every measure for every institution and year. Two tabs:
+- **Explore** (explore.html): every measure for every institution and year. Three tabs:
   - **Table** (explore.html#table): pivot tables with quick views, build-your-own dropdowns, filters and CSV export. See pivot-tables.md.
   - **Chart builder** (explore.html#chart): drag-and-drop charts with example charts to start from. See chart-builder.md.
+  - **Animate** (explore.html#animate): bar races, line races, moving scatter plots and maps that play through the years. See animate.md.
 - **Ask** (ask.html): ask questions in plain language; an AI model writes SQL that runs in your browser. See ask.md.
 - **About HERD** (data.html): what the HERD Survey is (who reports, what counts as R&D, timing, history, caveats), then sources, definitions, how the data were put together, downloads. See data-sources.md.
 - **About the model** (model.html): how the projections are made and tested. See projection-model.md.

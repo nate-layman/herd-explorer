@@ -50,7 +50,7 @@ Each new survey year needs one edit to `pipeline/release.yml` and two workflow r
 ## Built with
 
 - [DuckDB-WASM](https://github.com/duckdb/duckdb-wasm) (MIT): the database in your browser
-- [Plotly.js](https://github.com/plotly/plotly.js) (MIT): charts
+- [Plotly.js](https://github.com/plotly/plotly.js) (MIT): charts, including the Animate tab on the Explore page
 - [Graphic Walker](https://github.com/Kanaries/graphic-walker) (Apache 2.0) and React (MIT): the Chart builder tab on the Explore page
 - [Perspective](https://github.com/perspective-dev/perspective) (Apache 2.0): the Table tab on the Explore page
 - [marked](https://github.com/markedjs/marked) (MIT) and [DOMPurify](https://github.com/cure53/DOMPurify) (Apache 2.0 or MPL 2.0): rendering answers on the Ask page

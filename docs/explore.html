@@ -54,17 +54,21 @@
     #gw-tip::before { content: ""; position: absolute; top: -6px; left: 1.2rem; border: 6px solid transparent; border-top: 0; border-bottom-color: var(--ink); }
     #gw-tip .close { position: absolute; top: 0.2rem; right: 0.4rem; font: inherit; font-size: 1.1rem; line-height: 1; border: none; background: none; color: #fff; cursor: pointer; }
     #gw { min-height: 760px; border: 1px solid var(--line); border-radius: 0.5rem; }
+    #an-controls [hidden] { display: none; }
+    #an-controls select { min-width: 9rem; }
+    #an-chart { height: 660px; min-height: 0; border: 1px solid var(--line); border-radius: 0.5rem; }
   </style>
 </head>
 <body>
   <main>
     <h1>Explore</h1>
     <p class="lede">Every measure for every institution and year. Use <strong>Table</strong> to pivot, filter and export, or
-      <strong>Chart builder</strong> to drag fields into a chart.</p>
+      <strong>Chart builder</strong> to drag fields into a chart, or <strong>Animate</strong> to watch the years play out.</p>
 
     <div class="tabs" role="tablist">
       <button role="tab" id="tab-table" aria-controls="panel-table" aria-selected="true">Table</button>
       <button role="tab" id="tab-chart" aria-controls="panel-chart" aria-selected="false">Chart builder</button>
+      <button role="tab" id="tab-animate" aria-controls="panel-animate" aria-selected="false">Animate</button>
     </div>
 
     <section id="panel-table" class="panel" role="tabpanel" aria-labelledby="tab-table">
@@ -118,6 +122,47 @@
         may move or drop fields.</p>
       <div id="gw"><p class="status" style="padding:1rem">Loading the chart builder&hellip;</p></div>
       <p class="chart-note">Chart builder: <a href="https://github.com/Kanaries/graphic-walker">Graphic Walker</a> (Apache 2.0).</p>
+    </section>
+
+    <section id="panel-animate" class="panel" role="tabpanel" aria-labelledby="tab-animate" hidden>
+      <div class="presets" id="an-examples">
+        <span>Examples:</span>
+        <button data-ex="institutions">Top 15 institutions</button>
+        <button data-ex="states">States, federal funding</button>
+        <button data-ex="agencies">Federal agencies at R1s</button>
+        <button data-ex="scatter">Federal vs. business funding</button>
+        <button data-ex="map">R&amp;D map</button>
+        <button data-ex="stateLines">Top 5 states over time</button>
+      </div>
+      <div class="controls" id="an-controls">
+        <label>Animation
+          <select id="an-type">
+            <option value="bar">Bar race</option>
+            <option value="line">Line race</option>
+            <option value="scatter">Moving scatter</option>
+            <option value="map">Map</option>
+          </select></label>
+        <label data-for="bar line">Show <select id="an-show"></select></label>
+        <label data-for="bar line map">Measure <select id="an-measure"></select></label>
+        <label data-for="scatter">X axis <select id="an-x"></select></label>
+        <label data-for="scatter">Y axis <select id="an-y"></select></label>
+        <label>How many <select id="an-n"></select></label>
+        <label>Institution type <select id="an-sector"></select></label>
+        <label>State <select id="an-state"></select></label>
+        <label>Speed
+          <select id="an-speed">
+            <option value="slow">Slow</option>
+            <option value="normal">Normal</option>
+            <option value="fast">Fast</option>
+          </select></label>
+        <label class="inline" data-for="scatter"><span><input type="checkbox" id="an-log" /> Log scales</span></label>
+      </div>
+      <p id="an-status" class="status">Loading&hellip;</p>
+      <div id="an-chart" class="chart"></div>
+      <p id="an-note" class="chart-note"></p>
+      <p class="chart-note">Press <strong>Play</strong> under the chart, or drag the year slider. Hover a bar, line or dot
+        for its amount. Animations use a short list of measures and at most a few hundred institutions at a time, so they
+        play smoothly; for anything else, use the Chart builder or Table tab.</p>
     </section>
 
     <dialog id="howto" aria-labelledby="howto-title">
@@ -446,10 +491,11 @@
     }
 
     // ── Tabs: each library loads the first time its tab opens ────────────────
-    const loaders = { table: loadTable, chart: loadChart };
+    const loadAnimate = async () => (await import('./js/animate.js')).loadAnimate(M);
+    const loaders = { table: loadTable, chart: loadChart, animate: loadAnimate };
     const loaded = {};
     function open(name) {
-      for (const n of ['table', 'chart']) {
+      for (const n of ['table', 'chart', 'animate']) {
         $(`tab-${n}`).setAttribute('aria-selected', String(n === name));
         $(`panel-${n}`).hidden = n !== name;
       }
@@ -459,11 +505,13 @@
     }
     $('tab-table').onclick = () => open('table');
     $('tab-chart').onclick = () => open('chart');
-    // A link's #table or #chart wins; otherwise reopen the tab last used in this browser tab
+    $('tab-animate').onclick = () => open('animate');
+    // A link's #table, #chart or #animate wins; otherwise reopen the tab last used in this browser tab
     const TAB = 'herd-explorer:explore-tab';
     let last = null;
     try { last = sessionStorage.getItem(TAB); } catch { }
-    open(location.hash === '#chart' || (!location.hash && last === 'chart') ? 'chart' : 'table');
+    const want = location.hash.slice(1) || last;
+    open(['chart', 'animate'].includes(want) ? want : 'table');
   </script>
 </body>
 </html>
