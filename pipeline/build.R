@@ -409,6 +409,13 @@ invisible(dbExecute(con, "
 # Per institution and HERD fiscal year, from IPEDS files aligned to that year:
 #   ft_instructional_staff  S{Y-1}_IS, all full-time instructional staff (SISCAT 1), as of November 1 of Y-1.
 #                           FY 2012 is empty: the 2011 staff files use a different layout with no matching total.
+#   tenure_line_faculty     S{Y-1}_IS, full-time instructional staff who are tenured (SISCAT 200) or on the tenure
+#                           track (SISCAT 300); 0 where the institution reports staff but has no tenure system.
+#   ft_research_staff       S{Y-1}_OC, full-time staff whose primary function is research (STAFFCAT 2220), such as
+#                           research scientists and postdocs on the payroll; they are not instructional staff.
+#   pt_instructional_staff  S{Y-1}_OC, part-time instructional staff (STAFFCAT 3210)
+#   grad_research_assistants S{Y-1}_OC, graduate assistants, research (STAFFCAT 4420); degree-granting institutions
+#                           only. The S_OC counts are 0 where the institution reports staff but none in a category.
 #   enrollment_12mo         EFFY{Y}, 12-month unduplicated headcount, all students (EFFYLEV 1), July Y-1 to June Y
 #   fte_students            EFIA{Y}, reported FTE: undergraduate + graduate + doctor's professional practice
 #   research_doctorates     C{Y}_A, doctor's degrees, research/scholarship (AWLEVEL 17), all fields (CIPCODE 99),
@@ -421,7 +428,21 @@ num <- function(v) suppressWarnings(as.numeric(v))
 yy <- function(y) sprintf("%02d", y %% 100)
 ipeds_year <- function(y) {
   staff <- if (y > 2012) read_ipeds(sprintf("S%d_IS", y - 1))  # no S2011_IS; see above
-  if (!is.null(staff)) staff <- with(staff[trimws(staff$SISCAT) == "1", ], data.frame(unitid = UNITID, ft_instructional_staff = num(HRTOTLT)))
+  if (!is.null(staff)) {
+    cat_sum <- function(cats) tapply(num(staff$HRTOTLT[trimws(staff$SISCAT) %in% cats]), staff$UNITID[trimws(staff$SISCAT) %in% cats], sum)
+    all_ft <- staff[trimws(staff$SISCAT) == "1", ]
+    tenure <- cat_sum(c("200", "300"))
+    staff <- data.frame(unitid = all_ft$UNITID, ft_instructional_staff = num(all_ft$HRTOTLT),
+                        tenure_line_faculty = unname(ifelse(is.na(tenure[all_ft$UNITID]), 0, tenure[all_ft$UNITID])))
+  }
+  oc <- if (y > 2012) read_ipeds(sprintf("S%d_OC", y - 1))  # the occupational categories start with fall 2012
+  if (!is.null(oc)) {
+    pick <- function(code) { v <- num(oc$HRTOTLT[trimws(oc$STAFFCAT) == code]); names(v) <- oc$UNITID[trimws(oc$STAFFCAT) == code]
+                             out <- v[ids]; out[is.na(out)] <- 0; unname(out) }
+    ids <- unique(oc$UNITID)
+    oc <- data.frame(unitid = ids, ft_research_staff = pick("2220"), pt_instructional_staff = pick("3210"),
+                     grad_research_assistants = pick("4420"))
+  }
   effy <- read_ipeds(sprintf("EFFY%d", y))
   if (!is.null(effy)) effy <- with(effy[trimws(effy$EFFYLEV) == "1", ], data.frame(unitid = UNITID, enrollment_12mo = num(EFYTOTLT)))
   efia <- read_ipeds(sprintf("EFIA%d", y))
@@ -435,10 +456,11 @@ ipeds_year <- function(y) {
   fin <- rbind(
     if (!is.null(f1)) data.frame(unitid = f1$UNITID, research_expenses = num(f1$F1C021), total_expenses = num(f1$F1D02), endowment = num(f1$F1H02)),
     if (!is.null(f2)) data.frame(unitid = f2$UNITID, research_expenses = num(f2$F2E021), total_expenses = num(f2$F2B02), endowment = num(f2$F2H02)))
-  parts <- Filter(Negate(is.null), list(staff, effy, efia, comp, fin))
+  parts <- Filter(Negate(is.null), list(staff, oc, effy, efia, comp, fin))
   if (!length(parts)) return(NULL)
   out <- Reduce(function(a, b) merge(a, b, by = "unitid", all = TRUE), parts)
-  for (col in c("ft_instructional_staff", "enrollment_12mo", "fte_students", "research_doctorates", "research_expenses", "total_expenses", "endowment"))
+  for (col in c("ft_instructional_staff", "tenure_line_faculty", "ft_research_staff", "pt_instructional_staff",
+                "grad_research_assistants", "enrollment_12mo", "fte_students", "research_doctorates", "research_expenses", "total_expenses", "endowment"))
     if (!col %in% names(out)) out[[col]] <- NA_real_
   out$year <- y
   out
@@ -447,7 +469,8 @@ ip <- do.call(rbind, lapply(first_year:last_year, ipeds_year))
 dbWriteTable(con, "ipeds_raw", ip, temporary = TRUE)
 invisible(dbExecute(con, "
   CREATE TABLE context_ipeds AS
-  SELECT o.inst_id, p.year, p.ft_instructional_staff, p.enrollment_12mo, p.fte_students, p.research_doctorates,
+  SELECT o.inst_id, p.year, p.ft_instructional_staff, p.tenure_line_faculty, p.ft_research_staff,
+         p.pt_instructional_staff, p.grad_research_assistants, p.enrollment_12mo, p.fte_students, p.research_doctorates,
          p.research_expenses, p.total_expenses, p.endowment
   FROM ipeds_raw p JOIN unitid_owner o ON o.unitid = p.unitid AND o.year = p.year
   ORDER BY o.inst_id, p.year
@@ -593,7 +616,7 @@ sources <- rbind(
              title = "Carnegie Classification of Institutions of Higher Education, 2025 public data file: research activity designations and institutional classification",
              url = carnegie25_page, files = basename(carnegie25_url)),
   data.frame(table_name = "context_ipeds", publisher = "NCES, U.S. Department of Education",
-             title = sprintf("IPEDS Human Resources (S_IS), 12-Month Enrollment (EFFY), Instructional Activity (EFIA), Completions (C_A) and Finance (F1A, F2), FY %d-%d", min(ip$year), max(ip$year)),
+             title = sprintf("IPEDS Human Resources (S_IS, S_OC), 12-Month Enrollment (EFFY), Instructional Activity (EFIA), Completions (C_A) and Finance (F1A, F2), FY %d-%d", min(ip$year), max(ip$year)),
              url = "https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx", files = paste(grep("^HD", ipeds_used, invert = TRUE, value = TRUE), collapse = "; ")),
   data.frame(table_name = "context_graduate_students", publisher = "NCSES, U.S. National Science Foundation",
              title = sprintf("Survey of Graduate Students and Postdoctorates in Science and Engineering (GSS) public microdata, %d-%d", min(gss$year), max(gss$year)),
@@ -661,7 +684,7 @@ table_catalog <- rbind(
   data.frame(table_name = "context_gdp_deflator", origin = other, description = "BEA GDP implicit price deflator"),
   data.frame(table_name = "context_state_gdp", origin = other, description = "BEA GDP by state"),
   data.frame(table_name = "context_epscor_eligibility", origin = other, description = "NSF EPSCoR eligible jurisdictions by fiscal year"),
-  data.frame(table_name = "context_ipeds", origin = other, description = "IPEDS faculty, enrollment, research doctorates, expenses and endowment by institution and year"),
+  data.frame(table_name = "context_ipeds", origin = other, description = "IPEDS faculty (full-time, tenure-line, part-time), research staff, graduate research assistants, enrollment, research doctorates, expenses and endowment by institution and year"),
   data.frame(table_name = "context_graduate_students", origin = other, description = "NCSES GSS graduate students, postdocs and non-faculty researchers by institution and year")
 )
 uncatalogued <- setdiff(grep("^context_", dbListTables(con), value = TRUE), table_catalog$table_name)

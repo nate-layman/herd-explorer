@@ -30,8 +30,35 @@ files are public, institution-level microdata published by NCSES:
 https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development
 
 HERD Explorer reshapes and combines those files but does not change the
-reported values. NCSES is not responsible for this project, and errors in
-the reshaping are this project's own. Report them on the AI4RA Groups.io
+reported values.
+
+For context, the database also holds data from other publishers, kept in
+tables named context_* and listed with their sources on the site's About HERD
+page (data.html#data) and in the database's sources table:
+
+- Carnegie Classification of Institutions of Higher Education, 2021 update and
+  2025 public data files, American Council on Education
+  (https://carnegieclassifications.acenet.edu). Licensed under a Creative
+  Commons Attribution-NonCommercial-ShareAlike 4.0 International License
+  (https://creativecommons.org/licenses/by-nc-sa/4.0/). HERD Explorer uses it
+  for institution types and groups (context_carnegie_2021,
+  context_carnegie_2025, and the Carnegie columns of institution_groups and
+  the downloads); those derived tables are shared under the same license, for
+  noncommercial use. It is not covered by the Apache License.
+- Integrated Postsecondary Education Data System (IPEDS), National Center for
+  Education Statistics, U.S. Department of Education: faculty and staff,
+  enrollment, completions, finance and locations.
+- Survey of Graduate Students and Postdoctorates in Science and Engineering
+  (GSS), NCSES, U.S. National Science Foundation.
+- EPSCoR eligibility, U.S. National Science Foundation.
+- State population estimates, U.S. Census Bureau.
+- GDP price deflator and state GDP, U.S. Bureau of Economic Analysis.
+- Changes in Federal Research Requirements Since 1991, Council on
+  Governmental Relations (COGR).
+
+U.S. federal data are in the public domain. Neither NCSES nor any of these
+publishers is responsible for this project, and errors in the reshaping and
+combining are this project's own. Report them on the AI4RA Groups.io
 listserv with #DataScience in the subject line:
 https://groups.ai4ra.uidaho.edu/g/main
 

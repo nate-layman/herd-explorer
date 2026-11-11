@@ -13,6 +13,8 @@
     .controls .radios { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 0.9rem; padding: 0.3rem 0; }
     .controls .radios label { flex-direction: row; align-items: center; gap: 0.3rem; font-size: 0.9rem; font-weight: 400; color: var(--ink); }
     .controls .radios input { min-width: 0; width: auto; margin: 0; }
+    .controls .radios select { min-width: 0; font-size: 0.85rem; padding: 0.15rem 0.3rem; }
+    .controls .radios select[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -31,7 +33,12 @@
         <legend>Show as</legend>
         <div class="radios">
           <label><input type="radio" name="mode" value="value" checked /> Amount</label>
-          <label><input type="radio" name="mode" value="faculty" /> Per full-time faculty member</label>
+          <label><input type="radio" name="mode" value="faculty" /> Per faculty member</label>
+          <select id="per" aria-label="Which faculty count" hidden>
+            <option value="ft">Full-time instructional staff</option>
+            <option value="tenure">Tenured and tenure-track faculty</option>
+            <option value="research">Full-time instructional and research staff</option>
+          </select>
           <label><input type="radio" name="mode" value="index" /> Index (FY <span data-meta="first_year">2012</span> = 100)</label>
         </div>
       </fieldset>
@@ -81,6 +88,19 @@
     const getMode = () => document.querySelector('input[name="mode"]:checked').value;
     const startMode = params.get('mode');
     if (['faculty', 'index'].includes(startMode)) document.querySelector(`input[name="mode"][value="${startMode}"]`).checked = true;
+    // Which IPEDS count to divide by (all from context_ipeds, not HERD data)
+    const STAFF = {
+      ft: { sql: 'c.ft_instructional_staff', one: 'full-time faculty member', count: 'full-time faculty',
+            note: 'IPEDS full-time instructional staff (NCES). Instructional staff include faculty who do no research, so this is per faculty member, not per researcher.' },
+      tenure: { sql: 'c.tenure_line_faculty', one: 'tenure-line faculty member', count: 'tenure-line faculty',
+                note: 'IPEDS full-time instructional staff who are tenured or on the tenure track (NCES). Institutions without a tenure system have none, so they show no value.' },
+      research: { sql: '(c.ft_instructional_staff + coalesce(c.ft_research_staff, 0))', one: 'faculty or research staff member',
+                  count: 'faculty and research staff',
+                  note: 'IPEDS full-time instructional staff plus full-time staff whose main job is research, such as research scientists and postdocs on the payroll (NCES).' },
+    };
+    if (STAFF[params.get('per')]) $('per').value = params.get('per');
+    const showPer = () => { $('per').hidden = getMode() !== 'faculty'; };
+    showPer();
 
     function renderChips() {
       $('chips').innerHTML = selected.map((id, k) => {
@@ -94,14 +114,14 @@
     }
 
     async function draw() {
-      const id = $('measure').value, mode = getMode(), context = $('context').value;
+      const id = $('measure').value, mode = getMode(), context = $('context').value, staff = STAFF[$('per').value];
       const m = await measure(id);
       const Plotly = await plotly();
       if (!selected.length) { $('chart').innerHTML = '<p class="status">Add an institution to begin.</p>'; return; }
 
-      // Faculty: IPEDS full-time instructional staff (not HERD data), counted the November before each fiscal year
+      // Faculty: an IPEDS staff count (not HERD data), counted the November before each fiscal year
       const rows = await query(`
-        SELECT m.inst_id, m.year, m.value, c.ft_instructional_staff AS faculty
+        SELECT m.inst_id, m.year, m.value, ${staff.sql} AS faculty
         FROM metrics m LEFT JOIN context_ipeds c USING (inst_id, year)
         WHERE m.measure_id = ${lit(id)} AND m.inst_id IN (${selected.map(lit).join(',')}) ORDER BY m.year`);
       const perFaculty = p => p.faculty > 0 ? p.value / p.faculty : null;
@@ -113,8 +133,8 @@
       // Per-faculty amounts: dollars as usual; people per faculty member need decimals
       const shortPer = v => v == null ? '' : m.unit === 'dollars' ? short(v, 'dollars') : v.toFixed(2);
       const hoverText = p => mode !== 'faculty' ? short(p.value, m.unit)
-        : p.faculty > 0 ? `${shortPer(perFaculty(p))} per faculty member (${short(p.value, m.unit)}, ${Math.round(p.faculty).toLocaleString()} faculty)`
-        : 'No IPEDS faculty count';
+        : p.faculty > 0 ? `${shortPer(perFaculty(p))} per ${staff.one} (${short(p.value, m.unit)}, ${Math.round(p.faculty).toLocaleString()} ${staff.count})`
+        : `No IPEDS count of ${staff.count}`;
 
       const traces = selected.map((sid, k) => {
         const inst = insts.find(i => i.inst_id === sid);
@@ -147,9 +167,9 @@
         const sectors = [...new Set(selected.map(sid => insts.find(i => i.inst_id === sid).sector))];
         // Per faculty member, the median is of each institution's own ratio, among institutions with a faculty count
         const med = await query(mode === 'faculty' ? `
-          SELECT i.sector, m.year, median(m.value / c.ft_instructional_staff) AS value, count(*) AS n
+          SELECT i.sector, m.year, median(m.value / ${staff.sql}) AS value, count(*) AS n
           FROM metrics m JOIN institution_latest i USING (inst_id) JOIN context_ipeds c USING (inst_id, year)
-          WHERE m.measure_id = ${lit(id)} AND i.sector IN (${sectors.map(lit).join(',')}) AND c.ft_instructional_staff > 0
+          WHERE m.measure_id = ${lit(id)} AND i.sector IN (${sectors.map(lit).join(',')}) AND ${staff.sql} > 0
           GROUP BY ALL ORDER BY m.year` : `
           SELECT i.sector, m.year, median(m.value) AS value, count(*) AS n
           FROM metrics m JOIN institution_latest i USING (inst_id)
@@ -159,7 +179,7 @@
           const pts = med.filter(r => r.sector === s);
           // The median rows already hold per-faculty values, so they are plotted as they are
           const y = mode === 'faculty' ? pts.map(p => p.value) : series(pts);
-          const amount = v => mode === 'faculty' ? `${shortPer(v)} per faculty member` : short(v, m.unit);
+          const amount = v => mode === 'faculty' ? `${shortPer(v)} per ${staff.one}` : short(v, m.unit);
           traces.push({ x: pts.map(p => p.year), y, text: pts.map(p => `${amount(p.value)}, median of ${p.n}`),
                         name: `Median: ${s}`, type: 'scatter', mode: 'lines', line: { color: '#777', width: 1.5, dash: 'dash' },
                         hovertemplate: mode === 'index' ? '%{y:.0f} (%{text})' : '%{text}' });
@@ -171,14 +191,13 @@
         ...BASE_LAYOUT,
         yaxis: { ...BASE_LAYOUT.yaxis,
                  title: { text: mode === 'index' ? `Index, FY ${M.first_year} = 100`
-                   : mode === 'faculty' ? `${unitAxis(m.unit)} per full-time faculty member` : unitAxis(m.unit) },
+                   : mode === 'faculty' ? `${unitAxis(m.unit)} per ${staff.one}` : unitAxis(m.unit) },
                  tickprefix: mode !== 'index' && m.unit === 'dollars' ? '$' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
         `Source: NCSES HERD Survey public microdata, FY ${M.first_year}-${M.last_year}. Nominal dollars. Institution type from the 2021 Carnegie Classification.` +
-        (mode === 'faculty' ? ` Faculty: IPEDS full-time instructional staff (NCES), not HERD data, counted the November before each fiscal year;` +
-          ` no count for FY ${M.first_year}, and none where HERD and IPEDS do not report the same campus.` +
-          ` Instructional staff include faculty who do no research, so this is R&D per faculty member, not per researcher.` : '');
+        (mode === 'faculty' ? ` Divided by ${staff.note} Not HERD data. Counted the November before each fiscal year;` +
+          ` no count for FY ${M.first_year}, and none where HERD and IPEDS do not report the same campus.` : '');
     }
 
     function update() {
@@ -186,6 +205,8 @@
       u.searchParams.set('inst', selected.join(','));
       u.searchParams.set('measure', $('measure').value);
       if (getMode() === 'value') u.searchParams.delete('mode'); else u.searchParams.set('mode', getMode());
+      if (getMode() === 'faculty' && $('per').value !== 'ft') u.searchParams.set('per', $('per').value); else u.searchParams.delete('per');
+      showPer();
       history.replaceState(null, '', u);
       renderChips();
       draw();

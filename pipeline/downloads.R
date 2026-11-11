@@ -10,6 +10,8 @@ download_readme <- function(built_on, first_year, last_year) paste(
   "https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development",
   "Institution type (sector): Carnegie Classification of Institutions of Higher Education, 2021 update.",
   "Not HERD data: the sector, msi and land_grant columns come from the Carnegie Classification, not the HERD Survey.",
+  "Carnegie data: American Council on Education, https://carnegieclassifications.acenet.edu, licensed CC BY-NC-SA 4.0",
+  "(noncommercial use, with attribution, shared under the same license): https://creativecommons.org/licenses/by-nc-sa/4.0/",
   "Every other column is HERD data as NCSES released it. Data from other publishers (Census, BEA, IPEDS, GSS, Carnegie,",
   "NSF EPSCoR, COGR) is only in the full database, in tables whose names start with context_; see its table_catalog table.",
   "Dollar values are in whole nominal dollars. NCSES publishes HERD in thousands of dollars; HERD Explorer multiplies",

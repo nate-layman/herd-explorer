@@ -8,14 +8,14 @@ See institutions' trends side by side.
 - **Measure**: the measure to chart (All R&D by default).
 - **Show as** (radio buttons):
   - **Amount**: the measure as reported.
-  - **Per full-time faculty member**: the measure divided by the institution's full-time instructional staff from IPEDS (NCES), which is not HERD data. The count is taken the November before each fiscal year, so FY {first_year} has none, and it is missing where HERD and IPEDS do not report the same campus (some systems, medical centers and joint reporting units). Instructional staff include faculty who do no research, so read it as R&D per faculty member, not per researcher. Hover shows the amount and the faculty count. The context median is the median of each institution's own ratio. Projections are off in this view, since they project amounts.
+  - **Per faculty member**: the measure divided by an IPEDS staff count (NCES), which is not HERD data. A menu beside it picks the count: **Full-time instructional staff** (the default), **Tenured and tenure-track faculty** (institutions without a tenure system show no value), or **Full-time instructional and research staff** (adds staff whose main job is research, such as research scientists and postdocs on the payroll). The count is taken the November before each fiscal year, so FY {first_year} has none, and it is missing where HERD and IPEDS do not report the same campus (some systems, medical centers and joint reporting units). Instructional staff include faculty who do no research, so read it as R&D per faculty member, not per researcher. Hover shows the amount and the faculty count. The context median is the median of each institution's own ratio. Projections are off in this view, since they project amounts.
   - **Index (FY {first_year} = 100)**: compares growth among institutions of very different size.
 - **Context**: "Median of each institution's type" draws a dashed line for the median institution in each selected institution's Carnegie type, for context. "None" hides those lines.
 - **Show projection to FY {projection_last_year}**: adds each institution's projection with shaded uncertainty ranges. See projections.md.
 
 ## Sharing
 
-The address bar updates with the chosen institutions, measure and view (?inst=...&measure=...&mode=faculty or mode=index), so you can copy the link to share or bookmark the exact comparison.
+The address bar updates with the chosen institutions, measure and view (?inst=...&measure=...&mode=faculty or mode=index, and &per=tenure or per=research for the faculty count), so you can copy the link to share or bookmark the exact comparison.
 
 ## Tips
 
