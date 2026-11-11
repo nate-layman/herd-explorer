@@ -7,6 +7,13 @@
   <meta name="description" content="Compare institutions' research and development spending over time using NCSES HERD Survey data." />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/site.css" />
+  <style>
+    .controls fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
+    .controls fieldset legend { font-size: 0.8rem; font-weight: 600; color: var(--muted); padding: 0; margin-bottom: 0.25rem; }
+    .controls .radios { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 0.9rem; padding: 0.3rem 0; }
+    .controls .radios label { flex-direction: row; align-items: center; gap: 0.3rem; font-size: 0.9rem; font-weight: 400; color: var(--ink); }
+    .controls .radios input { min-width: 0; width: auto; margin: 0; }
+  </style>
 </head>
 <body>
   <main>
@@ -20,12 +27,14 @@
         <datalist id="inst-list"></datalist>
       </label>
       <label>Measure <select id="measure"></select></label>
-      <label>Show as
-        <select id="mode">
-          <option value="value">Amount</option>
-          <option value="index" data-meta-text="Index (FY {first_year} = 100)">Index (FY 2012 = 100)</option>
-        </select>
-      </label>
+      <fieldset id="mode">
+        <legend>Show as</legend>
+        <div class="radios">
+          <label><input type="radio" name="mode" value="value" checked /> Amount</label>
+          <label><input type="radio" name="mode" value="faculty" /> Per full-time faculty member</label>
+          <label><input type="radio" name="mode" value="index" /> Index (FY <span data-meta="first_year">2012</span> = 100)</label>
+        </div>
+      </fieldset>
       <label>Context
         <select id="context">
           <option value="sector">Median of each institution's type</option>
@@ -68,6 +77,11 @@
 
     await fillMeasureSelect($('measure'), params.get('measure') ?? 'source_all_r_d');
 
+    // Show as: amount, amount per full-time faculty member, or an index
+    const getMode = () => document.querySelector('input[name="mode"]:checked').value;
+    const startMode = params.get('mode');
+    if (['faculty', 'index'].includes(startMode)) document.querySelector(`input[name="mode"][value="${startMode}"]`).checked = true;
+
     function renderChips() {
       $('chips').innerHTML = selected.map((id, k) => {
         const i = insts.find(x => x.inst_id === id);
@@ -80,28 +94,38 @@
     }
 
     async function draw() {
-      const id = $('measure').value, mode = $('mode').value, context = $('context').value;
+      const id = $('measure').value, mode = getMode(), context = $('context').value;
       const m = await measure(id);
       const Plotly = await plotly();
       if (!selected.length) { $('chart').innerHTML = '<p class="status">Add an institution to begin.</p>'; return; }
 
+      // Faculty: IPEDS full-time instructional staff (not HERD data), counted the November before each fiscal year
       const rows = await query(`
-        SELECT inst_id, year, value FROM metrics
-        WHERE measure_id = ${lit(id)} AND inst_id IN (${selected.map(lit).join(',')}) ORDER BY year`);
+        SELECT m.inst_id, m.year, m.value, c.ft_instructional_staff AS faculty
+        FROM metrics m LEFT JOIN context_ipeds c USING (inst_id, year)
+        WHERE m.measure_id = ${lit(id)} AND m.inst_id IN (${selected.map(lit).join(',')}) ORDER BY m.year`);
+      const perFaculty = p => p.faculty > 0 ? p.value / p.faculty : null;
       const series = (pts) => {
         const base = pts[0]?.value;
-        return pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null) : p.value);
+        return pts.map(p => mode === 'index' ? (base ? 100 * p.value / base : null)
+          : mode === 'faculty' ? perFaculty(p) : p.value);
       };
+      // Per-faculty amounts: dollars as usual; people per faculty member need decimals
+      const shortPer = v => v == null ? '' : m.unit === 'dollars' ? short(v, 'dollars') : v.toFixed(2);
+      const hoverText = p => mode !== 'faculty' ? short(p.value, m.unit)
+        : p.faculty > 0 ? `${shortPer(perFaculty(p))} per faculty member (${short(p.value, m.unit)}, ${Math.round(p.faculty).toLocaleString()} faculty)`
+        : 'No IPEDS faculty count';
 
       const traces = selected.map((sid, k) => {
         const inst = insts.find(i => i.inst_id === sid);
         const pts = rows.filter(r => r.inst_id === sid);
-        return { x: pts.map(p => p.year), y: series(pts), text: pts.map(p => short(p.value, m.unit)), name: inst.name,
+        return { x: pts.map(p => p.year), y: series(pts), text: pts.map(hoverText), name: inst.name,
                  type: 'scatter', mode: 'lines+markers', line: { color: PALETTE[k % PALETTE.length], width: 2.5 },
-                 marker: { size: 7 }, hovertemplate: mode === 'value' ? '%{text}' : '%{y:.0f} (%{text})' };
+                 marker: { size: 7 }, hovertemplate: mode === 'index' ? '%{y:.0f} (%{text})' : '%{text}' };
       });
 
-      const canProject = await updateToggle($('project'), $('proj-flag'), id);
+      const canProject = await updateToggle($('project'), $('proj-flag'), id,
+        mode === 'faculty' ? 'projections are of amounts, not amounts per faculty member.' : null);
       if ($('project').checked && canProject) {
         let bands = [];
         try { bands = await institutionBands(id, selected); }
@@ -121,33 +145,47 @@
 
       if (context === 'sector') {
         const sectors = [...new Set(selected.map(sid => insts.find(i => i.inst_id === sid).sector))];
-        const med = await query(`
+        // Per faculty member, the median is of each institution's own ratio, among institutions with a faculty count
+        const med = await query(mode === 'faculty' ? `
+          SELECT i.sector, m.year, median(m.value / c.ft_instructional_staff) AS value, count(*) AS n
+          FROM metrics m JOIN institution_latest i USING (inst_id) JOIN context_ipeds c USING (inst_id, year)
+          WHERE m.measure_id = ${lit(id)} AND i.sector IN (${sectors.map(lit).join(',')}) AND c.ft_instructional_staff > 0
+          GROUP BY ALL ORDER BY m.year` : `
           SELECT i.sector, m.year, median(m.value) AS value, count(*) AS n
           FROM metrics m JOIN institution_latest i USING (inst_id)
           WHERE m.measure_id = ${lit(id)} AND i.sector IN (${sectors.map(lit).join(',')})
           GROUP BY ALL ORDER BY m.year`);
         for (const s of sectors) {
           const pts = med.filter(r => r.sector === s);
-          traces.push({ x: pts.map(p => p.year), y: series(pts), text: pts.map(p => `${short(p.value, m.unit)}, median of ${p.n}`),
+          // The median rows already hold per-faculty values, so they are plotted as they are
+          const y = mode === 'faculty' ? pts.map(p => p.value) : series(pts);
+          const amount = v => mode === 'faculty' ? `${shortPer(v)} per faculty member` : short(v, m.unit);
+          traces.push({ x: pts.map(p => p.year), y, text: pts.map(p => `${amount(p.value)}, median of ${p.n}`),
                         name: `Median: ${s}`, type: 'scatter', mode: 'lines', line: { color: '#777', width: 1.5, dash: 'dash' },
-                        hovertemplate: mode === 'value' ? '%{text}' : '%{y:.0f} (%{text})' });
+                        hovertemplate: mode === 'index' ? '%{y:.0f} (%{text})' : '%{text}' });
         }
       }
 
       if (!$('chart').data) $('chart').innerHTML = '';
       Plotly.react('chart', traces, {
         ...BASE_LAYOUT,
-        yaxis: { ...BASE_LAYOUT.yaxis, title: { text: mode === 'index' ? `Index, FY ${M.first_year} = 100` : unitAxis(m.unit) },
-                 tickprefix: mode === 'value' && m.unit === 'dollars' ? '$' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
+        yaxis: { ...BASE_LAYOUT.yaxis,
+                 title: { text: mode === 'index' ? `Index, FY ${M.first_year} = 100`
+                   : mode === 'faculty' ? `${unitAxis(m.unit)} per full-time faculty member` : unitAxis(m.unit) },
+                 tickprefix: mode !== 'index' && m.unit === 'dollars' ? '$' : '', rangemode: mode === 'index' ? 'normal' : 'tozero' },
       }, CONFIG);
       $('note').textContent = `${m.label}: ${m.definition} Covers ${m.coverage.toLowerCase()}. ` +
-        `Source: NCSES HERD Survey public microdata, FY ${M.first_year}-${M.last_year}. Nominal dollars. Institution type from the 2021 Carnegie Classification.`;
+        `Source: NCSES HERD Survey public microdata, FY ${M.first_year}-${M.last_year}. Nominal dollars. Institution type from the 2021 Carnegie Classification.` +
+        (mode === 'faculty' ? ` Faculty: IPEDS full-time instructional staff (NCES), not HERD data, counted the November before each fiscal year;` +
+          ` no count for FY ${M.first_year}, and none where HERD and IPEDS do not report the same campus.` +
+          ` Instructional staff include faculty who do no research, so this is R&D per faculty member, not per researcher.` : '');
     }
 
     function update() {
       const u = new URL(location);
       u.searchParams.set('inst', selected.join(','));
       u.searchParams.set('measure', $('measure').value);
+      if (getMode() === 'value') u.searchParams.delete('mode'); else u.searchParams.set('mode', getMode());
       history.replaceState(null, '', u);
       renderChips();
       draw();
