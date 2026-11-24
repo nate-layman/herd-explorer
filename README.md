@@ -1,79 +1,8 @@
-# HERD Explorer
+# HERD Explorer has moved
 
-Explore the NCSES Higher Education Research and Development (HERD) Survey from FY 2012 to FY 2024. Compare institutions, states and groups over time, roll up to national figures, pivot the institution-level data any way you like, and download it.
+HERD Explorer now lives in the AI4RA organization:
 
-Runs entirely in your browser. Nothing you do on the site is sent to a server.
+- Site: https://ai4ra.github.io/herd-explorer/
+- Code: https://github.com/AI4RA/herd-explorer
 
-**Status:** in development. See [PLAN.md](PLAN.md).
-
-## Where the data come from
-
-All figures come from the public, institution-level microdata files that the National Center for Science and Engineering Statistics (NCSES) publishes for the HERD Survey:
-
-https://ncses.nsf.gov/explore-data/microdata/higher-education-research-development
-
-Each fiscal year has a standard-form file (institutions with $1 million or more in R&D) and a short-form file (smaller institutions). The pipeline in [`pipeline/`](pipeline/) downloads both, combines them and checks the national totals against the tables NCSES publishes. HERD Explorer reshapes the data but does not change any reported value.
-
-## About the projections
-
-Charts can show a projection of the next few years. A projection shows where past trends lead if they continue. It does not account for known upcoming changes, such as federal budget or policy shifts, and may not reflect what actually happens. Nor can it see survey revisions or an institution's own plans.
-
-Projections come from a hierarchical generalized additive model fit with the R package mgcv. The model estimates one shared trend for the group you are looking at, lets each institution have its own level and growth rate, and pulls institutions with short or noisy histories toward the group trend. The shaded band shows the range the model considers plausible. The methods page on the site shows how well the model would have predicted past years.
-
-## Disclaimer
-
-HERD Explorer is an independent project. It is not an official product of NCSES or the U.S. National Science Foundation, and neither NCSES, NSF nor the University of Idaho endorses it or is responsible for its content.
-
-The data, charts and projections are provided "as is," without warranty of any kind, as described in the [LICENSE](LICENSE). They may contain errors introduced by the reshaping. They are not financial, budget, legal or investment advice. Before relying on a figure for a decision, check it against the official NCSES tables. Projections show where past trends lead if they continue and may not reflect what actually happens.
-
-## Tell us what you think
-
-Found a data error, or want other data or a new feature? Join the [AI4RA Groups.io listserv](https://groups.ai4ra.uidaho.edu/g/main) and reply to the [#DataScience](https://groups.ai4ra.uidaho.edu/g/main/search?q=%23DataScience&ct=1) thread, or start a new topic with #DataScience in the subject line. For a data error, include the page, the institution or slice, the year, and what you expected to see.
-
-## Local preview
-
-```bash
-python3 -m http.server 4173 -d docs
-```
-
-Then open http://localhost:4173
-
-## Rebuild the data
-
-```bash
-make packages   # once
-make all        # download, build and check the data, fit the projections, run the publish checks
-```
-
-Each new survey year needs one edit to `pipeline/release.yml` and two workflow runs; see [RELEASING.md](RELEASING.md).
-
-## Built with
-
-- [DuckDB-WASM](https://github.com/duckdb/duckdb-wasm) (MIT): the database in your browser
-- [Plotly.js](https://github.com/plotly/plotly.js) (MIT): charts, including the Animate tab on the Explore page
-- [Graphic Walker](https://github.com/Kanaries/graphic-walker) (Apache 2.0) and React (MIT): the Chart builder tab on the Explore page
-- [Perspective](https://github.com/perspective-dev/perspective) (Apache 2.0): the Table tab on the Explore page
-- [marked](https://github.com/markedjs/marked) (MIT) and [DOMPurify](https://github.com/cure53/DOMPurify) (Apache 2.0 or MPL 2.0): rendering answers on the Ask page
-- Google Gen AI SDK and Anthropic SDK (Apache 2.0): loaded only on the Ask page, only for those providers' keys
-- [GoatCounter](https://www.goatcounter.com) (EUPL 1.2; its count script is ISC): visit counts, see below
-- Offline, in R: duckdb, readxl, mgcv, scoringRules, writexl
-
-## Ask the data
-
-The Ask page lets you ask questions in plain language. Bring your own key: a University of Idaho MindRouter key (`mr2_...`), or an Anthropic, OpenAI or Google Gemini key. Paste it on the page, or open any page from a link ending in `?key=...` (for example the site root or `ask.html?key=...`); the key is read once, removed from the address bar, and kept only in that browser tab. The model writes SQL that runs read-only in your browser; only your question and the query results go to the provider you chose. When you ask for help using the site or about the methods, the model starts from a table of contents and reads only the help documents it needs from [`docs/help/`](docs/help/), which are then sent too.
-
-## Visit counts
-
-The site counts visits with [GoatCounter](https://www.goatcounter.com), a hosted, open-source counter that sets no cookies and stores no IP addresses or personal data. It keeps only totals: page views, browser, operating system, screen size, country and referring site.
-
-- **What is sent.** Only the page's path (`location.pathname`), never the query string or anchor, so a key passed in a `?key=` link never reaches GoatCounter. The counter loads after the page has removed the key from the address bar.
-- **Where it is.** `countVisit()` in [`docs/js/layout.js`](docs/js/layout.js), which every page calls through `renderLayout()`. The script is GoatCounter's versioned `count.v5.js`, pinned with a subresource integrity hash. To move to a newer version, change `GOATCOUNTER_JS` and `GOATCOUNTER_SRI` together (GoatCounter lists the hashes under "Use SRI with count.js?" in its documentation).
-- **Dashboard.** <https://herd-explorer.goatcounter.com> (sign-in required). It is the `herd-explorer` site in the AI4RA GoatCounter account, which holds one site per app. The counts follow the site code, not the domain, so they carry on if the site moves.
-- **Gaps.** Ad blockers often block GoatCounter, so the counts are lower than the true number of visits. Visits from `localhost` are not counted, so a local preview never shows up. Switching tabs within a page (such as Explore's Table, Chart builder and Animate tabs) is not counted separately.
-- **On the site.** The footer and the site overview help ([`docs/help/site-overview.md`](docs/help/site-overview.md)) say what is collected.
-
-## License
-
-Code: Apache 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Cite with [CITATION.cff](CITATION.cff).
-
-This material is based upon work supported by the U.S. National Science Foundation under the GRANTED program, award [2427549](https://www.nsf.gov/awardsearch/show-award?AWD_ID=2427549). HERD Explorer is a project of [AI4RA](https://ai4ra.uidaho.edu) at the University of Idaho ([AI4RA on GitHub](https://github.com/AI4RA)).
+This fork only serves a redirect, so links to the old address (https://nate-layman.github.io/herd-explorer/) land on the same page at the new one. `docs/index.html` and `docs/404.html` hold the redirect; the 404 page catches links to any other page.
